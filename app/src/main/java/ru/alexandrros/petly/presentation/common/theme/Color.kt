@@ -1,4 +1,4 @@
-package ru.alexandrros.petly.ui.theme
+package ru.alexandrros.petly.presentation.common.theme
 
 import androidx.compose.ui.graphics.Color
 
