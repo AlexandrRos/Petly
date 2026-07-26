@@ -1,93 +1,177 @@
 package ru.alexandrros.petly.presentation.userpets
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.alexandrros.petly.domain.model.Pet
+import ru.alexandrros.petly.presentation.common.components.SectionCard
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PetDetailScreen(pet: Pet) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (pet.photoRes != null) {
-            Image(
-                painter = painterResource(id = pet.photoRes),
-                contentDescription = "Фото питомца",
-                modifier = Modifier
-                    .size(150.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+fun PetDetailScreen(
+    pet: Pet,
+    onBackClick: () -> Unit,
+    onEditClick: (Pet) -> Unit
+) {
+    Scaffold(
+        //TODO: disable insets for album orientation
+        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top),
+        topBar = {
+            TopAppBar(
+                title = { Text(pet.name, style = MaterialTheme.typography.headlineSmall) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onEditClick(pet) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Pets,
-                contentDescription = null,
-                modifier = Modifier.size(100.dp),
-                tint = MaterialTheme.colorScheme.primary
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.size(120.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(64.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = pet.name,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = pet.name, style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = pet.species + if (pet.breed != null) " • ${pet.breed}" else "",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        // Основные данные
-        DetailRow("Вид", pet.species)
-        pet.breed?.let { DetailRow("Порода", it) }
-        pet.age?.let { DetailRow("Возраст", "$it лет") }
-        pet.weight?.let { DetailRow("Вес", "$it кг") }
-        DetailRow("Пол", if (pet.isMale) "Мужской" else "Женский")
-        pet.sterilizationStatus?.let {
-            DetailRow("Стерилизация", if (it) "Да" else "Нет")
-        }
+            Spacer(modifier = Modifier.height(24.dp))
 
-        // Списки
-        if (pet.vaccinations.isNotEmpty()) {
-            DetailList("Вакцинации", pet.vaccinations)
-        }
-        if (pet.chronicDiseases.isNotEmpty()) {
-            DetailList("Хронические заболевания", pet.chronicDiseases)
-        }
-        if (pet.allergies.isNotEmpty()) {
-            DetailList("Аллергии", pet.allergies)
-        }
-        if (pet.personalityTraits.isNotEmpty()) {
-            DetailList("Особенности характера", pet.personalityTraits)
-        }
-        pet.feedingSchedule?.let { DetailRow("Режим кормления", it) }
-        pet.walkingSchedule?.let { DetailRow("Расписание прогулок", it) }
-        if (pet.medications.isNotEmpty()) {
-            DetailList("Принимаемые лекарства", pet.medications)
+            SectionCard(title = "Основная информация") {
+                DetailRow("Вид", pet.species)
+                pet.breed?.let { DetailRow("Порода", it) }
+                pet.age?.let { DetailRow("Возраст", "$it лет") }
+                pet.weight?.let { DetailRow("Вес", "$it кг") }
+                DetailRow("Пол", if (pet.isMale) "Мужской" else "Женский")
+                pet.sterilizationStatus?.let {
+                    DetailRow("Стерилизация", if (it) "Да" else "Нет")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val healthItems = listOfNotNull(
+                if (pet.vaccinations.isNotEmpty()) "Вакцинации" to pet.vaccinations else null,
+                if (pet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to pet.chronicDiseases else null,
+                if (pet.allergies.isNotEmpty()) "Аллергии" to pet.allergies else null,
+                if (pet.medications.isNotEmpty()) "Принимаемые лекарства" to pet.medications else null
+            )
+            if (healthItems.isNotEmpty()) {
+                SectionCard(title = "Здоровье") {
+                    healthItems.forEach { (label, items) ->
+                        DetailList(label, items)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (pet.personalityTraits.isNotEmpty()) {
+                SectionCard(title = "Характер") {
+                    pet.personalityTraits.forEach { trait ->
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(trait) },
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Schedule
+            val scheduleItems = listOfNotNull(
+                pet.feedingSchedule?.let { "Режим кормления" to it },
+                pet.walkingSchedule?.let { "Расписание прогулок" to it }
+            )
+            if (scheduleItems.isNotEmpty()) {
+                SectionCard(title = "Расписание") {
+                    scheduleItems.forEach { (label, value) ->
+                        DetailRow(label, value)
+                    }
+                }
+            }
         }
     }
 }
+
+
+
 
 @Composable
 private fun DetailRow(label: String, value: String) {
@@ -102,24 +186,42 @@ private fun DetailRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
 @Composable
 private fun DetailList(label: String, items: List<String>) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(4.dp))
         items.forEach { item ->
-            Text(
-                text = "• $item",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 8.dp, top = 2.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Circle,
+                    contentDescription = null,
+                    modifier = Modifier.size(8.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = item,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }

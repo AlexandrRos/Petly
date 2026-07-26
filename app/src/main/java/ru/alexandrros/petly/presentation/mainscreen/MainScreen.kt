@@ -1,17 +1,29 @@
 package ru.alexandrros.petly.presentation.mainscreen
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -26,15 +38,19 @@ import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
 import ru.alexandrros.petly.presentation.profile.Profile
 import ru.alexandrros.petly.presentation.specialists.Specialists
+import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.UserPets
 import ru.alexandrros.petly.presentation.viewmodel.PetListViewModel
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val petListViewModel: PetListViewModel = viewModel()
     val nestedNavController = rememberNavController()
+    val pets by petListViewModel.pets.collectAsState()
+
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
         TabInfo(Screen.Specialists, "Специалисты", Icons.Filled.Search),
@@ -42,8 +58,13 @@ fun MainScreen() {
     )
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = NavigationBarDefaults.Elevation
+            ) {
                 val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
@@ -60,7 +81,14 @@ fun MainScreen() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
@@ -69,17 +97,22 @@ fun MainScreen() {
         NavHost(
             navController = nestedNavController,
             startDestination = Screen.Pets.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding) // now only bottom padding
         ) {
             composable(Screen.Specialists.route) { Specialists() }
+
             composable(Screen.Pets.route) {
                 UserPets(
-                    pets = petListViewModel.pets,
+                    pets = pets,
                     onPetClick = { pet ->
                         nestedNavController.navigate(Screen.PetDetail.createRoute(pet.id))
+                    },
+                    onAddClick = {
+                        nestedNavController.navigate(Screen.AddPet.route)
                     }
                 )
             }
+
             composable(Screen.Profile.route) { Profile() }
 
             composable(
@@ -89,9 +122,50 @@ fun MainScreen() {
                 val petId = backStackEntry.arguments?.getInt("petId") ?: 0
                 val pet = petListViewModel.getPetById(petId)
                 if (pet != null) {
-                    PetDetailScreen(pet = pet)
+                    PetDetailScreen(
+                        pet = pet,
+                        onBackClick = { nestedNavController.popBackStack() },
+                        onEditClick = { petToEdit ->
+                            nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
+                        }
+                    )
                 } else {
-                    Text("Питомец не найден")
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+
+            composable(Screen.AddPet.route) {
+                AddEditPetScreen(
+                    pet = null,
+                    onSave = { newPet ->
+                        petListViewModel.addPet(newPet)
+                        nestedNavController.popBackStack()
+                    },
+                    onCancel = { nestedNavController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = Screen.EditPet.route,
+                arguments = listOf(navArgument("petId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val petId = backStackEntry.arguments?.getInt("petId") ?: 0
+                val pet = petListViewModel.getPetById(petId)
+                if (pet != null) {
+                    AddEditPetScreen(
+                        pet = pet,
+                        onSave = { updatedPet ->
+                            petListViewModel.updatePet(updatedPet)
+                            nestedNavController.popBackStack()
+                        },
+                        onCancel = { nestedNavController.popBackStack() }
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
         }
