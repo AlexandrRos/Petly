@@ -3,22 +3,26 @@ package ru.alexandrros.petly.presentation.common.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.NavHostController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import ru.alexandrros.petly.presentation.login.LoginRoute
 import ru.alexandrros.petly.presentation.mainscreen.MainScreen
 import ru.alexandrros.petly.presentation.registration.RegisterRoute
-
+import ru.alexandrros.petly.presentation.viewmodel.UserViewModel
 
 @Composable
 fun AppNavGraph(
     loginViewModelFactory: ViewModelProvider.Factory,
-    registerViewModelFactory: ViewModelProvider.Factory
+    registerViewModelFactory: ViewModelProvider.Factory,
+    userViewModelFactory: ViewModelProvider.Factory,
+    petListViewModelFactory: ViewModelProvider.Factory
 ) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "login") {
+    val userViewModel: UserViewModel = viewModel(factory = userViewModelFactory)
+
+    NavHost(navController = navController, startDestination = Screen.Login.route) {
         composable(Screen.Login.route) {
             LoginRoute(
                 factory = loginViewModelFactory,
@@ -37,9 +41,12 @@ fun AppNavGraph(
                 onNavigateToLogin = { navController.popBackStack() }
             )
         }
-
         composable(Screen.Main.route) {
-            MainScreen()
+            MainScreen(
+                userViewModel = userViewModel,
+                outerNavController = navController,                // pass the outer controller
+                petListViewModelFactory = petListViewModelFactory
+            )
         }
     }
 }

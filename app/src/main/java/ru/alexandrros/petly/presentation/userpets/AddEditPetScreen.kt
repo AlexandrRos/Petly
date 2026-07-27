@@ -82,7 +82,8 @@ fun AddEditPetScreen(
                 actions = {
                     IconButton(onClick = {
                         val newPet = Pet(
-                            id = pet?.id ?: 0,
+                            id = pet?.id ?: "",          // для нового – пустая строка, репозиторий сам присвоит
+                            userId = pet?.userId ?: "",  // так же будет заполнено
                             name = name,
                             species = species,
                             breed = breed.ifBlank { null },
@@ -110,6 +111,7 @@ fun AddEditPetScreen(
             )
         }
     ) { padding ->
+        // … the rest of the form is unchanged …
         Column(
             modifier = Modifier
                 .fillMaxSize()

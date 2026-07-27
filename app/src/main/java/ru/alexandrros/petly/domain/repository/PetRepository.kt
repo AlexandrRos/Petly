@@ -5,7 +5,8 @@ import ru.alexandrros.petly.domain.model.Pet
 
 interface PetRepository {
     fun getAllPets(): StateFlow<List<Pet>>
-    fun getPetById(id: Int): Pet?
-    fun addPet(pet: Pet)
-    fun updatePet(updatedPet: Pet)
+    fun getPetById(id: String): Pet?
+    suspend fun addPet(pet: Pet)
+    suspend fun updatePet(updatedPet: Pet)
+    suspend fun deletePet(petId: String)
 }

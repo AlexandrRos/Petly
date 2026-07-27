@@ -8,11 +8,14 @@ sealed class Screen(val route: String) {
     data object Specialists : Screen("specialists")
     data object Profile : Screen("profile")
     data object Requests : Screen("requests")
+
     data object PetDetail : Screen("pet_detail/{petId}") {
-        fun createRoute(petId: Int) = "pet_detail/$petId"
+        fun createRoute(petId: String) = "pet_detail/$petId"   // String
     }
+
     data object AddPet : Screen("add_pet")
+
     data object EditPet : Screen("edit_pet/{petId}") {
-        fun createRoute(petId: Int) = "edit_pet/$petId"
+        fun createRoute(petId: String) = "edit_pet/$petId"     // String
     }
 }

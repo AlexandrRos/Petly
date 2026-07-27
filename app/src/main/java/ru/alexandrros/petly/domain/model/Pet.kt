@@ -1,13 +1,14 @@
 package ru.alexandrros.petly.domain.model
 
 data class Pet(
-    val id: Int,
+    val id: String = "",              // Firestore document ID
+    val userId: String,               // owner’s UID
     val name: String,
     val species: String,
     val breed: String? = null,
     val age: Int? = null,
     val weight: Double? = null,
-    val isMale: Boolean,                 // true = самец, false = самка
+    val isMale: Boolean,
     val sterilizationStatus: Boolean? = null,
     val vaccinations: List<String> = emptyList(),
     val chronicDiseases: List<String> = emptyList(),
