@@ -6,9 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import ru.alexandrros.petly.presentation.login.LoginRoute
-import ru.alexandrros.petly.presentation.login.LoginScreen
 import ru.alexandrros.petly.presentation.mainscreen.MainScreen
-
 
 
 @Composable

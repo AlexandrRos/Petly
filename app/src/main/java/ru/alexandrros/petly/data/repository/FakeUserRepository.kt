@@ -3,6 +3,7 @@ package ru.alexandrros.petly.data.repository
 import kotlinx.coroutines.delay
 import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.repository.UserRepository
+import kotlin.time.Duration.Companion.milliseconds
 
 class FakeUserRepository : UserRepository {
 
@@ -12,7 +13,7 @@ class FakeUserRepository : UserRepository {
     )
 
     override suspend fun login(email: String, password: String): Result<User> {
-        delay(1_500)
+        delay(1_500.milliseconds)
         val match = users.find { it.email == email && it.password == password }
         return if (match != null) {
             Result.success(User(email = match.email, name = match.name))

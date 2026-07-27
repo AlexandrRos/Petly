@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,6 +37,7 @@ import androidx.navigation.navArgument
 import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
 import ru.alexandrros.petly.presentation.profile.Profile
+import ru.alexandrros.petly.presentation.requests.RequestsScreen
 import ru.alexandrros.petly.presentation.specialists.Specialists
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
@@ -50,6 +54,7 @@ fun MainScreen() {
 
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
+        TabInfo(Screen.Requests, "Заявки", Icons.Filled.Newspaper),
         TabInfo(Screen.Specialists, "Специалисты", Icons.Filled.Search),
         TabInfo(Screen.Profile, "Аккаунт", Icons.Filled.AccountCircle)
     )
@@ -94,7 +99,7 @@ fun MainScreen() {
         NavHost(
             navController = nestedNavController,
             startDestination = Screen.Pets.route,
-            modifier = Modifier.padding(innerPadding) // now only bottom padding
+            modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Specialists.route) { Specialists() }
 
@@ -108,6 +113,10 @@ fun MainScreen() {
                         nestedNavController.navigate(Screen.AddPet.route)
                     }
                 )
+            }
+
+            composable(Screen.Requests.route) {
+                RequestsScreen()
             }
 
             composable(Screen.Profile.route) { Profile() }
