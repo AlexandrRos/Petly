@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,11 +24,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import ru.alexandrros.petly.presentation.viewmodel.LoginUiState
+
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    uiState: LoginUiState,
+    onLoginClick: (email: String, password: String) -> Unit,
+    onResetState: () -> Unit
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    // Сброс состояния при успешном входе (опционально)
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) {
+            email = ""
+            password = ""
+            onResetState()
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -39,7 +57,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Welcome",
+                text = "Добро пожаловать",
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -49,24 +67,46 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading,
+                singleLine = true
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text("Пароль") },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading,
+                singleLine = true
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (uiState.isError && uiState.errorMessage != null) {
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             Button(
-                onClick = onLoginSuccess,
-                modifier = Modifier.fillMaxWidth()
+                onClick = { onLoginClick(email, password) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank()
             ) {
-                Text("Log In")
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Войти")
+                }
             }
         }
     }

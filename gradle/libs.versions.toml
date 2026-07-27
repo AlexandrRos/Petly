@@ -10,6 +10,7 @@ activityCompose = "1.13.0"
 composeBom = "2026.06.01"
 navigationRuntimeKtx = "2.9.8"
 navigationCompose = "2.9.8"
+lifecycleRuntimeCompose = "2.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,7 @@ androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navig
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version = "1.7.8" }
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.7.8" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 
 
 [plugins]
