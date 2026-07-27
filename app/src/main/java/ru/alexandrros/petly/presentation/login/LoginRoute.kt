@@ -3,19 +3,18 @@ package ru.alexandrros.petly.presentation.login
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ru.alexandrros.petly.data.repository.FakeUserRepository
-import ru.alexandrros.petly.domain.usecase.LoginUseCase
 import ru.alexandrros.petly.presentation.viewmodel.LoginViewModel
 
 
 @Composable
-fun LoginRoute(onLoginSuccess: () -> Unit) {
-    val repository = remember { FakeUserRepository() }
-    val useCase = remember { LoginUseCase(repository) }
-    val factory = remember { LoginViewModel.provideFactory(useCase) }
+fun LoginRoute(
+    factory: ViewModelProvider.Factory,
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit
+) {
     val viewModel: LoginViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -24,6 +23,7 @@ fun LoginRoute(onLoginSuccess: () -> Unit) {
         onLoginClick = { email, password ->
             viewModel.login(email, password, onLoginSuccess)
         },
+        onNavigateToRegister = onNavigateToRegister,
         onResetState = { viewModel.resetState() }
     )
 }

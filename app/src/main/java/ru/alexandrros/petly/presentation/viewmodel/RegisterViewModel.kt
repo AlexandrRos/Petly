@@ -1,5 +1,7 @@
 package ru.alexandrros.petly.presentation.viewmodel
 
+
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -7,50 +9,50 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import ru.alexandrros.petly.domain.usecase.LoginUseCase
+import ru.alexandrros.petly.domain.usecase.RegisterUseCase
+import kotlin.onSuccess
 
-data class LoginUiState(
+data class RegisterUiState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     val isError: Boolean = false,
     val errorMessage: String? = null
 )
 
-
-class LoginViewModel(
-    private val loginUseCase: LoginUseCase
+class RegisterViewModel(
+    private val registerUseCase: RegisterUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LoginUiState())
-    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(RegisterUiState())
+    val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    fun login(email: String, password: String, onSuccess: () -> Unit) {
+    fun register(email: String, password: String, name: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            _uiState.value = LoginUiState(isLoading = true)
-            loginUseCase(email, password)
+            _uiState.value = RegisterUiState(isLoading = true)
+            registerUseCase(email, password, name)
                 .onSuccess {
-                    _uiState.value = LoginUiState(isSuccess = true)
+                    _uiState.value = RegisterUiState(isSuccess = true)
                     onSuccess()
                 }
                 .onFailure { throwable ->
-                    _uiState.value = LoginUiState(
+                    _uiState.value = RegisterUiState(
                         isError = true,
-                        errorMessage = throwable.message ?: "Ошибка входа"
+                        errorMessage = throwable.message ?: "Ошибка регистрации"
                     )
                 }
         }
     }
 
     fun resetState() {
-        _uiState.value = LoginUiState()
+        _uiState.value = RegisterUiState()
     }
 
     companion object {
-        fun provideFactory(loginUseCase: LoginUseCase): ViewModelProvider.Factory =
+        fun provideFactory(registerUseCase: RegisterUseCase): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return LoginViewModel(loginUseCase) as T
+                    return RegisterViewModel(registerUseCase) as T
                 }
             }
     }

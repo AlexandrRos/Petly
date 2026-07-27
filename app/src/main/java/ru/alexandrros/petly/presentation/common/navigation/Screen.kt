@@ -2,6 +2,7 @@ package ru.alexandrros.petly.presentation.common.navigation
 
 sealed class Screen(val route: String) {
     data object Login : Screen("login")
+    data object Registration : Screen("registration")
     data object Main : Screen("main")
     data object Pets : Screen("pets")
     data object Specialists : Screen("specialists")
