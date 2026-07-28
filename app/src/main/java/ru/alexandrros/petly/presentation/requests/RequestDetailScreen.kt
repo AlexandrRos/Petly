@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.alexandrros.petly.domain.model.Pet
-import ru.alexandrros.petly.presentation.viewmodel.RequestDetailViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)

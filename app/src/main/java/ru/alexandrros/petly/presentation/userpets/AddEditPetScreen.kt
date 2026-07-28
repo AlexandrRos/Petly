@@ -111,7 +111,6 @@ fun AddEditPetScreen(
             )
         }
     ) { padding ->
-        // … the rest of the form is unchanged …
         Column(
             modifier = Modifier
                 .fillMaxSize()

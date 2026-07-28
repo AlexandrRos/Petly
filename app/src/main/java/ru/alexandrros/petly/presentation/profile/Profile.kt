@@ -55,7 +55,6 @@ fun Profile(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Specialist toggle
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 16.dp)

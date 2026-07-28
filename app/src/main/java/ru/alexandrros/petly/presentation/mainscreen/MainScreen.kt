@@ -28,24 +28,25 @@ import ru.alexandrros.petly.presentation.specialists.Specialists
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.UserPets
-import ru.alexandrros.petly.presentation.viewmodel.PetListViewModel
-import ru.alexandrros.petly.presentation.viewmodel.RequestDetailViewModel
-import ru.alexandrros.petly.presentation.viewmodel.RequestViewModel
-import ru.alexandrros.petly.presentation.viewmodel.UserViewModel
+import ru.alexandrros.petly.presentation.userpets.PetListViewModel
+import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
+import ru.alexandrros.petly.presentation.requests.RequestViewModel
+import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    userViewModel: UserViewModel,
+    profileViewModel: ProfileViewModel,
     petListViewModelFactory: ViewModelProvider.Factory,
     outerNavController: NavController,
     requestViewModelFactory: ViewModelProvider.Factory,
-    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory
+    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
+    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory
 ) {
     val petListViewModel: PetListViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
     val pets by petListViewModel.pets.collectAsState()
-    val currentUser by userViewModel.currentUser.collectAsState()
+    val currentUser by profileViewModel.currentUser.collectAsState()
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
         TabInfo(Screen.Requests, "Заявки", Icons.Filled.Newspaper),
@@ -108,7 +109,6 @@ fun MainScreen(
             }
 
             composable(Screen.Requests.route) {
-                val currentUser by userViewModel.currentUser.collectAsState()
                 val isSpecialist = currentUser?.specialist != null && currentUser?.specialist != "None"
                 val requestViewModel: RequestViewModel = viewModel(factory = requestViewModelFactory)
 
@@ -129,13 +129,13 @@ fun MainScreen(
                 Profile(
                     user = currentUser,
                     onLogout = {
-                        userViewModel.logout()
+                        profileViewModel.logout()
                         outerNavController.navigate("login") {
                             popUpTo(0) { inclusive = true }
                         }
                     },
                     onSpecialistToggle = { isSpecialist ->
-                        userViewModel.setSpecialist(isSpecialist)
+                        profileViewModel.setSpecialist(isSpecialist)
                     }
                 )
             }
@@ -145,21 +145,14 @@ fun MainScreen(
                 arguments = listOf(navArgument("petId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val petId = backStackEntry.arguments?.getString("petId") ?: ""
-                val pet = petListViewModel.getPetById(petId)
-                if (pet != null) {
-                    PetDetailScreen(
-                        pet = pet,
-                        onBackClick = { nestedNavController.popBackStack() },
-                        onEditClick = { petToEdit ->
-                            nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
-                        },
-                        requestViewModelFactory = requestViewModelFactory,
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
+                PetDetailScreen(
+                    petId = petId,
+                    onBackClick = { nestedNavController.popBackStack() },
+                    onEditClick = { petToEdit ->
+                        nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
+                    },
+                    viewModelFactory = petDetailViewModelFactory(petId)
+                )
             }
 
             composable(Screen.AddPet.route) {

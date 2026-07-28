@@ -1,25 +1,38 @@
-package ru.alexandrros.petly.presentation.viewmodel
-
+package ru.alexandrros.petly.presentation.requests
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.model.User
-import ru.alexandrros.petly.domain.repository.PetRepository
-import ru.alexandrros.petly.domain.repository.RequestRepository
-import ru.alexandrros.petly.domain.repository.UserRepository
-
+import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
+import ru.alexandrros.petly.domain.usecase.DeleteRequestUseCase
+import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
+import ru.alexandrros.petly.domain.usecase.GetRequestByIdUseCase
+import ru.alexandrros.petly.domain.usecase.GetUserByIdUseCase
+import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 
 class RequestDetailViewModel(
     private val requestId: String,
-    private val requestRepository: RequestRepository,
-    private val userRepository: UserRepository,
-    private val petRepositoryProvider: (userId: String) -> PetRepository
+    private val getRequestById: GetRequestByIdUseCase,
+    private val acceptRequestUseCase: AcceptRequestUseCase,
+    private val deleteRequestUseCase: DeleteRequestUseCase,
+    private val getPetByUser: GetPetByUserUseCase,
+    private val getUserById: GetUserByIdUseCase,
+    private val observeCurrentUser: ObserveCurrentUserUseCase
 ) : ViewModel() {
 
     private val _snackbarEvent = MutableSharedFlow<String>()
@@ -36,12 +49,14 @@ class RequestDetailViewModel(
 
     private val _specialistUser = MutableStateFlow<User?>(null)
     val specialistUser: StateFlow<User?> = _specialistUser
-    private val currentUser: StateFlow<User?> = userRepository.getCurrentUser()
+
+    private val currentUser: StateFlow<User?> = observeCurrentUser()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val currentUserId: StateFlow<String?> = currentUser
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val canAccept: StateFlow<Boolean> = combine(
         currentUserId, _request, currentUser
     ) { uid, req, user ->
@@ -59,15 +74,14 @@ class RequestDetailViewModel(
     private fun loadRequest() {
         viewModelScope.launch {
             _isLoading.value = true
-            val req = requestRepository.getRequestById(requestId)
+            val req = getRequestById(requestId)
             _request.value = req
             _isLoading.value = false
 
             if (req != null) {
-                val petRepo = petRepositoryProvider(req.creatorUserId)
-                petRepo.getPetById(req.creatorUserId, req.petId)
+                getPetByUser(req.creatorUserId, req.petId)
                     .catch { e ->
-                        if (e !is kotlinx.coroutines.CancellationException) {
+                        if (e !is CancellationException) {
                             _snackbarEvent.emit("Ошибка загрузки питомца: ${e.localizedMessage}")
                         }
                     }
@@ -76,9 +90,9 @@ class RequestDetailViewModel(
                     }
 
                 req.specialistUserId?.let { specialistId ->
-                    userRepository.getUserById(specialistId)
+                    getUserById(specialistId)
                         .catch { e ->
-                            if (e !is kotlinx.coroutines.CancellationException) {
+                            if (e !is CancellationException) {
                                 _snackbarEvent.emit("Ошибка загрузки специалиста: ${e.localizedMessage}")
                             }
                         }
@@ -100,7 +114,7 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             val req = _request.value ?: return@launch
             if (isOwner()) {
-                requestRepository.deleteRequest(req.id)
+                deleteRequestUseCase(req.id)   // <-- renamed
                     .onSuccess {
                         _snackbarEvent.emit("Заявка удалена")
                         _request.value = null
@@ -114,10 +128,10 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             val uid = currentUserId.first { it != null } ?: return@launch
             val reqId = _request.value?.id ?: return@launch
-            requestRepository.acceptRequest(reqId, uid)
+            acceptRequestUseCase(reqId, uid)   // <-- renamed
                 .onSuccess {
                     _snackbarEvent.emit("Заявка принята")
-                    loadRequest()   // refresh
+                    loadRequest()
                 }
                 .onFailure { e -> _snackbarEvent.emit("Ошибка: ${e.localizedMessage}") }
         }
@@ -125,15 +139,27 @@ class RequestDetailViewModel(
 
     class Factory(
         private val requestId: String,
-        private val requestRepository: RequestRepository,
-        private val userRepository: UserRepository,
-        private val petRepositoryProvider: (userId: String) -> PetRepository
+        private val getRequestById: GetRequestByIdUseCase,
+        private val acceptRequestUseCase: AcceptRequestUseCase,
+        private val deleteRequestUseCase: DeleteRequestUseCase,
+        private val getPetByUser: GetPetByUserUseCase,
+        private val getUserById: GetUserByIdUseCase,
+        private val observeCurrentUser: ObserveCurrentUserUseCase
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            @Suppress("UNCHECKED_CAST")
-            return RequestDetailViewModel(
-                requestId, requestRepository, userRepository, petRepositoryProvider
-            ) as T
+            if (modelClass.isAssignableFrom(RequestDetailViewModel::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return RequestDetailViewModel(
+                    requestId,
+                    getRequestById,
+                    acceptRequestUseCase,
+                    deleteRequestUseCase,
+                    getPetByUser,
+                    getUserById,
+                    observeCurrentUser
+                ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

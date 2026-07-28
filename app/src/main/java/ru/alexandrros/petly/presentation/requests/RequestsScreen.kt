@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ru.alexandrros.petly.domain.model.Request
-import ru.alexandrros.petly.presentation.viewmodel.RequestViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

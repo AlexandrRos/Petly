@@ -3,27 +3,26 @@ package ru.alexandrros.petly.presentation.common.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import ru.alexandrros.petly.presentation.login.LoginRoute
 import ru.alexandrros.petly.presentation.mainscreen.MainScreen
 import ru.alexandrros.petly.presentation.registration.RegisterRoute
-import ru.alexandrros.petly.presentation.viewmodel.UserViewModel
+import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 
 
 @Composable
 fun AppNavGraph(
     loginViewModelFactory: ViewModelProvider.Factory,
     registerViewModelFactory: ViewModelProvider.Factory,
-    userViewModelFactory: ViewModelProvider.Factory,
+    profileViewModel: ProfileViewModel,
     petListViewModelFactory: ViewModelProvider.Factory,
     requestViewModelFactory: ViewModelProvider.Factory,
-    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory
+    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
+    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory
 ) {
     val navController = rememberNavController()
-    val userViewModel: UserViewModel = viewModel(factory = userViewModelFactory)
 
     NavHost(navController = navController, startDestination = Screen.Login.route) {
         composable(Screen.Login.route) {
@@ -46,11 +45,13 @@ fun AppNavGraph(
         }
         composable(Screen.Main.route) {
             MainScreen(
-                userViewModel = userViewModel,
+                profileViewModel = profileViewModel,
                 outerNavController = navController,
                 petListViewModelFactory = petListViewModelFactory,
                 requestViewModelFactory = requestViewModelFactory,
-                requestDetailViewModelFactory = requestDetailViewModelFactory
+                requestDetailViewModelFactory = requestDetailViewModelFactory,
+                petDetailViewModelFactory = petDetailViewModelFactory
+
             )
         }
     }

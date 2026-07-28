@@ -1,4 +1,4 @@
-package ru.alexandrros.petly.presentation.viewmodel
+package ru.alexandrros.petly.presentation.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

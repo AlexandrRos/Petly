@@ -1,26 +1,25 @@
 package ru.alexandrros.petly.data.repository
 
 import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.tasks.await
+import ru.alexandrros.petly.data.remote.datasource.FirebaseRequestDataSource
+import ru.alexandrros.petly.data.remote.mapper.toDomain
+import ru.alexandrros.petly.data.remote.mapper.toDto
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.repository.RequestRepository
+import kotlin.coroutines.cancellation.CancellationException
 
-import kotlin.Result
 
-
-class FirebaseRequestRepository : RequestRepository {
-
-    private val firestore = FirebaseFirestore.getInstance()
-    private val requestsCollection = firestore.collection("requests")
+class FirebaseRequestRepository(
+    private val dataSource: FirebaseRequestDataSource = FirebaseRequestDataSource()
+) : RequestRepository {
 
     override suspend fun createRequest(request: Request): Result<String> {
         return try {
-            val docRef = requestsCollection.add(request).await()
-            Result.success(docRef.id)
+            val dto = request.toDto()
+            val docId = dataSource.createRequest(dto)
+            Result.success(docId)
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Create request error", e)
             Result.failure(e)
@@ -29,9 +28,7 @@ class FirebaseRequestRepository : RequestRepository {
 
     override suspend fun acceptRequest(requestId: String, specialistUserId: String): Result<Unit> {
         return try {
-            requestsCollection.document(requestId)
-                .update("specialistUserId", specialistUserId)
-                .await()
+            dataSource.acceptRequest(requestId, specialistUserId)
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Accept request error", e)
@@ -41,7 +38,7 @@ class FirebaseRequestRepository : RequestRepository {
 
     override suspend fun deleteRequest(requestId: String): Result<Unit> {
         return try {
-            requestsCollection.document(requestId).delete().await()
+            dataSource.deleteRequest(requestId)
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Delete request error", e)
@@ -51,11 +48,8 @@ class FirebaseRequestRepository : RequestRepository {
 
     override suspend fun getRequestById(requestId: String): Request? {
         return try {
-            val doc = requestsCollection.document(requestId).get().await()
-            if (doc.exists()) {
-                doc.toObject(Request::class.java)?.copy(id = doc.id)
-            } else null
-        } catch (e: kotlinx.coroutines.CancellationException) {
+            dataSource.getRequestById(requestId)?.toDomain()
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Get request by id error", e)
@@ -65,13 +59,8 @@ class FirebaseRequestRepository : RequestRepository {
 
     override suspend fun checkExistingRequest(userId: String, petId: String): Boolean {
         return try {
-            val querySnapshot = requestsCollection
-                .whereEqualTo("creatorUserId", userId)
-                .whereEqualTo("petId", petId)
-                .get()
-                .await()
-            !querySnapshot.isEmpty
-        } catch (e: kotlinx.coroutines.CancellationException) {
+            dataSource.checkExistingRequest(userId, petId)
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Check existing request error", e)
@@ -80,34 +69,17 @@ class FirebaseRequestRepository : RequestRepository {
     }
 
     override fun getRequestsByCreator(userId: String): Flow<List<Request>> {
-        return requestsCollection
-            .whereEqualTo("creatorUserId", userId)
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Request::class.java)?.copy(id = doc.id)
-                }
-            }
+        return dataSource.getRequestsByCreator(userId)
+            .map { dtos -> dtos.map { it.toDomain() } }
     }
 
     override fun getRequestsBySpecialist(userId: String): Flow<List<Request>> {
-        return requestsCollection
-            .whereEqualTo("specialistUserId", userId)
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Request::class.java)?.copy(id = doc.id)
-                }
-            }
+        return dataSource.getRequestsBySpecialist(userId)
+            .map { dtos -> dtos.map { it.toDomain() } }
     }
 
     override fun getAllRequests(): Flow<List<Request>> {
-        return requestsCollection
-            .snapshots()
-            .map { snapshot ->
-                snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Request::class.java)?.copy(id = doc.id)
-                }
-            }
+        return dataSource.getAllRequests()
+            .map { dtos -> dtos.map { it.toDomain() } }
     }
 }
