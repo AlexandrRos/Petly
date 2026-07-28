@@ -19,6 +19,11 @@ class RequestViewModel(
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
 
+
+    // Track ongoing request creation
+    private val _isCreatingRequest = MutableStateFlow(false)
+    val isCreatingRequest: StateFlow<Boolean> = _isCreatingRequest
+
     private val currentUserId: StateFlow<String?> = userRepository.getCurrentUser()
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -61,10 +66,16 @@ class RequestViewModel(
 
     fun createRequest(petId: String, petName: String, species: String) {
         viewModelScope.launch {
-            val uid = currentUserId.first { it != null } ?: return@launch
+            _isCreatingRequest.value = true
+            val uid = currentUserId.first { it != null } ?: run {
+                _snackbarEvent.emit("Ошибка: не удалось получить пользователя")
+                _isCreatingRequest.value = false
+                return@launch
+            }
             val alreadyExists = requestRepository.checkExistingRequest(uid, petId)
             if (alreadyExists) {
                 _snackbarEvent.emit("Заявка для этого питомца уже создана")
+                _isCreatingRequest.value = false
                 return@launch
             }
             requestRepository.createRequest(
@@ -74,9 +85,12 @@ class RequestViewModel(
                     petName = petName,
                     species = species
                 )
-            ).onFailure { e ->
+            ).onSuccess {
+                _snackbarEvent.emit("Заявка успешно создана")
+            }.onFailure { e ->
                 _snackbarEvent.emit("Ошибка при создании заявки: ${e.localizedMessage}")
             }
+            _isCreatingRequest.value = false
         }
     }
 

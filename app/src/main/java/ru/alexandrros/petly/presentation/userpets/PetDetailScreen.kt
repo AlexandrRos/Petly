@@ -25,11 +25,13 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,6 +39,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +63,7 @@ fun PetDetailScreen(
 ) {
     val requestViewModel: RequestViewModel = viewModel(factory = requestViewModelFactory)
     val snackbarHostState = remember { SnackbarHostState() }
+    val isCreating by requestViewModel.isCreatingRequest.collectAsState()
     LaunchedEffect(Unit) {
         requestViewModel.snackbarEvent.collect { message ->
             snackbarHostState.showSnackbar(message)
@@ -66,6 +71,7 @@ fun PetDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         //TODO: disable insets for album orientation
         contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top),
         topBar = {
@@ -187,8 +193,17 @@ fun PetDetailScreen(
                         species = pet.species
                     )
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isCreating
             ) {
+                if (isCreating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text("Запросить помощь")
             }
         }
