@@ -1,10 +1,12 @@
 package ru.alexandrros.petly.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.User
@@ -17,7 +19,6 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     fun logout() {
         viewModelScope.launch {
             userRepository.logout()
-            // currentUser will become null automatically via the flow
         }
     }
 
@@ -28,6 +29,17 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
                 return UserViewModel(repository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+    fun setSpecialist(isSpecialist: Boolean) {
+        viewModelScope.launch {
+            val user = currentUser.first() ?: return@launch
+            val newSpecialist = if (isSpecialist) "Vet" else "None"
+            userRepository.updateSpecialist(user.uid, newSpecialist)
+                .onFailure { e ->
+                    Log.e("UserViewModel", "Failed to update specialist", e)
+                }
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,7 +15,8 @@ import ru.alexandrros.petly.domain.model.User
 @Composable
 fun Profile(
     user: User?,
-    onLogout: () -> Unit   // new callback
+    onLogout: () -> Unit,
+    onSpecialistToggle: (Boolean) -> Unit
 ) {
     if (user == null) {
         Box(
@@ -27,6 +29,8 @@ fun Profile(
             )
         }
     } else {
+        val isSpecialist = user.specialist != null && user.specialist != "None"
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -48,6 +52,24 @@ fun Profile(
                 text = "UID: ${user.uid}",
                 style = MaterialTheme.typography.bodyMedium
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Specialist toggle
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Статус специалиста: ${if (isSpecialist) "Ветеринар" else "Нет"}",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = isSpecialist,
+                    onCheckedChange = { checked -> onSpecialistToggle(checked) }
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 

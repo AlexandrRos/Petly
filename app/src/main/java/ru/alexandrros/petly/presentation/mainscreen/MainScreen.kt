@@ -1,15 +1,9 @@
 package ru.alexandrros.petly.presentation.mainscreen
 
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,12 +22,15 @@ import androidx.navigation.navArgument
 import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
 import ru.alexandrros.petly.presentation.profile.Profile
+import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
 import ru.alexandrros.petly.presentation.specialists.Specialists
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.UserPets
 import ru.alexandrros.petly.presentation.viewmodel.PetListViewModel
+import ru.alexandrros.petly.presentation.viewmodel.RequestDetailViewModel
+import ru.alexandrros.petly.presentation.viewmodel.RequestViewModel
 import ru.alexandrros.petly.presentation.viewmodel.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +38,9 @@ import ru.alexandrros.petly.presentation.viewmodel.UserViewModel
 fun MainScreen(
     userViewModel: UserViewModel,
     petListViewModelFactory: ViewModelProvider.Factory,
-    outerNavController: NavController
+    outerNavController: NavController,
+    requestViewModelFactory: ViewModelProvider.Factory,
+    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory
 ) {
     val petListViewModel: PetListViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
@@ -102,33 +101,50 @@ fun MainScreen(
                 UserPets(
                     pets = pets,
                     onPetClick = { pet ->
-                        // pet.id is now String
                         nestedNavController.navigate(Screen.PetDetail.createRoute(pet.id))
                     },
                     onAddClick = { nestedNavController.navigate(Screen.AddPet.route) }
                 )
             }
 
-            composable(Screen.Requests.route) { RequestsScreen() }
+            composable(Screen.Requests.route) {
+                val currentUser by userViewModel.currentUser.collectAsState()
+                val isSpecialist = currentUser?.specialist != null && currentUser?.specialist != "None"
+                val requestViewModel: RequestViewModel = viewModel(factory = requestViewModelFactory)
+
+                LaunchedEffect(isSpecialist) {
+                    requestViewModel.setSpecialist(isSpecialist)
+                }
+
+                RequestsScreen(
+                    requestViewModel = requestViewModel,
+                    isSpecialist = isSpecialist,
+                    onRequestClick = { requestId ->
+                        nestedNavController.navigate(Screen.RequestDetail.createRoute(requestId))
+                    }
+                )
+            }
 
             composable(Screen.Profile.route) {
                 Profile(
                     user = currentUser,
                     onLogout = {
                         userViewModel.logout()
-                        // Navigate back to login screen
                         outerNavController.navigate("login") {
-                            popUpTo(0) { inclusive = true } // clear back stack
+                            popUpTo(0) { inclusive = true }
                         }
+                    },
+                    onSpecialistToggle = { isSpecialist ->
+                        userViewModel.setSpecialist(isSpecialist)
                     }
                 )
             }
 
             composable(
                 route = Screen.PetDetail.route,
-                arguments = listOf(navArgument("petId") { type = NavType.StringType })   // String
+                arguments = listOf(navArgument("petId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val petId = backStackEntry.arguments?.getString("petId") ?: ""   // getString
+                val petId = backStackEntry.arguments?.getString("petId") ?: ""
                 val pet = petListViewModel.getPetById(petId)
                 if (pet != null) {
                     PetDetailScreen(
@@ -136,7 +152,8 @@ fun MainScreen(
                         onBackClick = { nestedNavController.popBackStack() },
                         onEditClick = { petToEdit ->
                             nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
-                        }
+                        },
+                        requestViewModelFactory = requestViewModelFactory,
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -149,7 +166,7 @@ fun MainScreen(
                 AddEditPetScreen(
                     pet = null,
                     onSave = { newPet ->
-                        petListViewModel.addPet(newPet)   // id & userId will be filled by repository
+                        petListViewModel.addPet(newPet)
                         nestedNavController.popBackStack()
                     },
                     onCancel = { nestedNavController.popBackStack() }
@@ -158,7 +175,7 @@ fun MainScreen(
 
             composable(
                 route = Screen.EditPet.route,
-                arguments = listOf(navArgument("petId") { type = NavType.StringType })   // String
+                arguments = listOf(navArgument("petId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val petId = backStackEntry.arguments?.getString("petId") ?: ""
                 val pet = petListViewModel.getPetById(petId)
@@ -176,6 +193,20 @@ fun MainScreen(
                         Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
+            }
+
+            composable(
+                route = Screen.RequestDetail.route,
+                arguments = listOf(navArgument("requestId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
+                val viewModel: RequestDetailViewModel = viewModel(
+                    factory = requestDetailViewModelFactory(requestId)
+                )
+                RequestDetailScreen(
+                    viewModel = viewModel,
+                    onBackClick = { nestedNavController.popBackStack() }
+                )
             }
         }
     }

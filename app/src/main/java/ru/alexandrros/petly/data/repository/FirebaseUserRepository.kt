@@ -1,13 +1,16 @@
 package ru.alexandrros.petly.data.repository
 
 
+import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.repository.UserRepository
@@ -58,32 +61,85 @@ class FirebaseUserRepository : UserRepository {
     }
 
     override fun getCurrentUser(): Flow<User?> = callbackFlow {
-        val listener = FirebaseAuth.AuthStateListener { auth ->
-            val firebaseUser = auth.currentUser
+        var snapshotListener: ListenerRegistration? = null
+
+        val authListener = FirebaseAuth.AuthStateListener { authInstance ->
+            val firebaseUser = authInstance.currentUser
             if (firebaseUser != null) {
-                // Fetch full user from Firestore
-                firestore.collection("users").document(firebaseUser.uid).get()
-                    .addOnSuccessListener { doc ->
-                        if (doc.exists()) {
-                            val name = doc.getString("name") ?: ""
-                            trySend(User(firebaseUser.uid, firebaseUser.email ?: "", name))
-                        } else {
-                            trySend(User(firebaseUser.uid, firebaseUser.email ?: "", ""))
-                        }
+                val docRef = firestore.collection("users").document(firebaseUser.uid)
+
+                // Start listening to Firestore document changes
+                snapshotListener?.remove()
+                snapshotListener = docRef.addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        return@addSnapshotListener
                     }
-                    .addOnFailureListener { trySend(null) }
+                    if (snapshot != null && snapshot.exists()) {
+                        val name = snapshot.getString("name") ?: ""
+                        val specialist = snapshot.getString("specialist")
+                        trySend(
+                            User(
+                                uid = firebaseUser.uid,
+                                email = firebaseUser.email ?: "",
+                                name = name,
+                                specialist = specialist
+                            )
+                        )
+                    } else {
+                        trySend(
+                            User(
+                                uid = firebaseUser.uid,
+                                email = firebaseUser.email ?: "",
+                                name = "",
+                                specialist = null
+                            )
+                        )
+                    }
+                }
             } else {
                 trySend(null)
             }
         }
-        auth.addAuthStateListener(listener)
-        // Emit current state immediately
-        listener.onAuthStateChanged(auth)
-        awaitClose { auth.removeAuthStateListener(listener) }
+
+        auth.addAuthStateListener(authListener)
+
+        awaitClose {
+            // Clean up both listeners
+            auth.removeAuthStateListener(authListener)
+            snapshotListener?.remove()
+        }
     }
+
 
     override suspend fun logout() {
         auth.signOut()
-        // Optionally clear any cached data
+    }
+
+    override fun getUserById(uid: String): Flow<User?> = flow {
+        try {
+            val doc = firestore.collection("users").document(uid).get().await()
+            if (doc.exists()) {
+                val name = doc.getString("name") ?: ""
+                val specialist = doc.getString("specialist")
+                emit(User(uid, email = doc.getString("email") ?: "", name = name, specialist = specialist))
+            } else {
+                emit(null)
+            }
+        } catch (e: Exception) {
+            Log.e("FirebaseUserRepo", "getUserById error", e)
+            emit(null)
+        }
+    }
+
+    override suspend fun updateSpecialist(uid: String, specialist: String): Result<Unit> {
+        return try {
+            firestore.collection("users").document(uid)
+                .update("specialist", specialist)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("FirebaseUserRepo", "Update specialist error", e)
+            Result.failure(e)
+        }
     }
 }

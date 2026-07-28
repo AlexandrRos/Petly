@@ -24,22 +24,29 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.SectionCard
+import ru.alexandrros.petly.presentation.viewmodel.RequestViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,8 +54,17 @@ import ru.alexandrros.petly.presentation.common.components.SectionCard
 fun PetDetailScreen(
     pet: Pet,
     onBackClick: () -> Unit,
-    onEditClick: (Pet) -> Unit
+    onEditClick: (Pet) -> Unit,
+    requestViewModelFactory: ViewModelProvider.Factory
 ) {
+    val requestViewModel: RequestViewModel = viewModel(factory = requestViewModelFactory)
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(Unit) {
+        requestViewModel.snackbarEvent.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     Scaffold(
         //TODO: disable insets for album orientation
         contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top),
@@ -150,7 +166,6 @@ fun PetDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Schedule
             val scheduleItems = listOfNotNull(
                 pet.feedingSchedule?.let { "Режим кормления" to it },
                 pet.walkingSchedule?.let { "Расписание прогулок" to it }
@@ -162,12 +177,23 @@ fun PetDetailScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = {
+                    requestViewModel.createRequest(
+                        petId = pet.id,
+                        petName = pet.name,
+                        species = pet.species
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Запросить помощь")
+            }
         }
     }
 }
-
-
-
 
 @Composable
 private fun DetailRow(label: String, value: String) {

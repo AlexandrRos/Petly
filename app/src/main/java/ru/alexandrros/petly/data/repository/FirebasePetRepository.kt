@@ -1,14 +1,18 @@
 package ru.alexandrros.petly.data.repository;
 
+
+import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.tasks.await
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.repository.PetRepository
 
-
-import com.google.firebase.firestore.FirebaseFirestore;
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.tasks.await
 
 class FirebasePetRepository(private val userId: String) : PetRepository {
 
@@ -19,7 +23,6 @@ class FirebasePetRepository(private val userId: String) : PetRepository {
     override fun getAllPets(): StateFlow<List<Pet>> = _pets
 
     init {
-        // Listen for real-time updates
         petsCollection.addSnapshotListener { snapshot, error ->
             if (error != null) return@addSnapshotListener
             val pets = snapshot?.documents?.mapNotNull { doc ->
@@ -33,9 +36,24 @@ class FirebasePetRepository(private val userId: String) : PetRepository {
         return _pets.value.find { it.id == id }
     }
 
+    override fun getPetById(userId: String, petId: String): Flow<Pet?> = flow {
+        val docRef = FirebaseFirestore.getInstance()
+            .collection("users").document(userId)
+            .collection("pets").document(petId)
+        val snapshot = docRef.get().await()
+        if (snapshot.exists()) {
+            emit(snapshot.toPet(userId))
+        } else {
+            emit(null)
+        }
+    }.catch { e ->
+        if (e is kotlinx.coroutines.CancellationException) throw e
+        Log.e("FirebasePetRepo", "Error fetching pet by id", e)
+        emit(null)
+    }
+
     override suspend fun addPet(pet: Pet) {
-        // Add a new document, let Firestore generate the ID
-        val docRef = petsCollection.document()   // auto-id
+        val docRef = petsCollection.document()
         val petWithId = pet.copy(id = docRef.id)
         docRef.set(petWithId.toMap()).await()
     }
@@ -49,7 +67,7 @@ class FirebasePetRepository(private val userId: String) : PetRepository {
     }
 }
 
-// Extension functions to convert between Pet and Map
+// Extension functions
 fun Pet.toMap(): Map<String, Any?> {
     return mapOf(
         "userId" to userId,
