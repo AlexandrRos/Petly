@@ -1,5 +1,6 @@
 package ru.alexandrros.petly.presentation.userpets
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,19 +47,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.SectionCard
-import ru.alexandrros.petly.presentation.requests.RequestViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetDetailScreen(
-    petId: String,
     onBackClick: () -> Unit,
     onEditClick: (Pet) -> Unit,
     viewModelFactory: ViewModelProvider.Factory
@@ -66,6 +68,15 @@ fun PetDetailScreen(
     val pet by viewModel.pet.collectAsState()
     val isCreating by viewModel.isCreatingRequest.collectAsState()
 
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val currentWindowInsets = if (isLandscape) {
+        WindowInsets.safeDrawing
+    } else {
+        WindowInsets.systemBars.only(WindowInsetsSides.Top)
+    }
+
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { message ->
             snackbarHostState.showSnackbar(message)
@@ -74,7 +85,7 @@ fun PetDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top),
+        contentWindowInsets = currentWindowInsets,
         topBar = {
             TopAppBar(
                 title = { Text(pet?.name ?: "", style = MaterialTheme.typography.headlineSmall) },
@@ -198,7 +209,8 @@ fun PetDetailScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isCreating
+                    enabled = !isCreating,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     if (isCreating) {
                         CircularProgressIndicator(
@@ -206,24 +218,20 @@ fun PetDetailScreen(
                             color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Загрузка…")
+                    } else {
+                        Text("Запросить помощь")
                     }
-                    Text("Запросить помощь")
                 }
             }
         } ?: run {
-            // Loading or error state
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (pet == null) {
-                    CircularProgressIndicator()
-                } else {
-                    Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
-                }
+                Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
 }
-
 
 @Composable
 private fun DetailRow(label: String, value: String) {
