@@ -1,18 +1,56 @@
 package ru.alexandrros.petly.presentation.requests
 
-import androidx.compose.foundation.layout.*
+import android.content.res.Configuration
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
-import ru.alexandrros.petly.domain.model.Pet
+import kotlinx.coroutines.launch
+import ru.alexandrros.petly.presentation.common.components.DetailList
+import ru.alexandrros.petly.presentation.common.components.DetailRow
+import ru.alexandrros.petly.presentation.common.components.SectionCard
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +65,7 @@ fun RequestDetailScreen(
     val specialistUser by viewModel.specialistUser.collectAsState()
     val canAccept by viewModel.canAccept.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { message ->
@@ -40,11 +79,20 @@ fun RequestDetailScreen(
         }
     }
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val contentWindowInsets = if (isLandscape) {
+        WindowInsets.safeDrawing
+    } else {
+        WindowInsets.systemBars.only(WindowInsetsSides.Top)
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = contentWindowInsets,
         topBar = {
             TopAppBar(
-                title = { Text("Заявка") },
+                title = { Text("Заявка", style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
@@ -85,103 +133,138 @@ fun RequestDetailScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large
+            Surface(
+                modifier = Modifier.size(120.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Питомец: ${req.petName}", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Вид: ${req.species}", style = MaterialTheme.typography.bodyLarge)
-                    Text("Создана: ${formatTimestamp(req.createdAt)}", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(64.dp)
+                    )
                 }
             }
 
-            pet?.let {
-                PetInfoCard(pet = it)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = req.petName,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = req.species,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            SectionCard(title = "Информация о заявке") {
+                DetailRow("Создана", formatTimestamp(req.createdAt))
+                DetailRow(
+                    "Статус",
+                    if (req.specialistUserId != null) "Принята специалистом" else "Ожидает специалиста"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            pet?.let { currentPet ->
+                SectionCard(title = "Основная информация") {
+                    DetailRow("Вид", currentPet.species)
+                    currentPet.breed?.let { DetailRow("Порода", it) }
+                    currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                    currentPet.weight?.let { DetailRow("Вес", "$it кг") }
+                    DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
+                    currentPet.sterilizationStatus?.let {
+                        DetailRow("Стерилизация", if (it) "Да" else "Нет")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val healthItems = listOfNotNull(
+                    if (currentPet.vaccinations.isNotEmpty()) "Вакцинации" to currentPet.vaccinations else null,
+                    if (currentPet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to currentPet.chronicDiseases else null,
+                    if (currentPet.allergies.isNotEmpty()) "Аллергии" to currentPet.allergies else null,
+                    if (currentPet.medications.isNotEmpty()) "Принимаемые лекарства" to currentPet.medications else null
+                )
+                if (healthItems.isNotEmpty()) {
+                    SectionCard(title = "Здоровье") {
+                        healthItems.forEach { (label, items) ->
+                            DetailList(label, items)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (currentPet.personalityTraits.isNotEmpty()) {
+                    SectionCard(title = "Характер") {
+                        currentPet.personalityTraits.forEach { trait ->
+                            AssistChip(
+                                onClick = {},
+                                label = { Text(trait) },
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                val scheduleItems = listOfNotNull(
+                    currentPet.feedingSchedule?.let { "Режим кормления" to it },
+                    currentPet.walkingSchedule?.let { "Расписание прогулок" to it }
+                )
+                if (scheduleItems.isNotEmpty()) {
+                    SectionCard(title = "Расписание") {
+                        scheduleItems.forEach { (label, value) ->
+                            DetailRow(label, value)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             } ?: run {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.padding(32.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                SectionCard(title = "Информация о питомце") {
+                    Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             val specialist = specialistUser
             if (req.specialistUserId != null && specialist != null) {
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Специалист", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Email: ${specialist.email}", style = MaterialTheme.typography.bodyMedium)
+                SectionCard(
+                    title = "Специалист",
+                    onClick = {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("not yet implemented")
+                        }
                     }
+                ) {
+                    DetailRow("Email", specialist.email)
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             if (canAccept) {
                 Button(
                     onClick = { viewModel.acceptRequest() },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Принять заявку")
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
         }
-    }
-}
-@Composable
-private fun PetInfoCard(pet: Pet) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Информация о питомце", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-
-            PetInfoRow("Имя", pet.name)
-            PetInfoRow("Вид", pet.species)
-            if (!pet.breed.isNullOrBlank()) PetInfoRow("Порода", pet.breed)
-            if (pet.age != null) PetInfoRow("Возраст", "${pet.age} лет")
-            if (pet.weight != null) PetInfoRow("Вес", "${pet.weight} кг")
-            PetInfoRow("Пол", if (pet.isMale) "Мужской" else "Женский")
-            if (pet.sterilizationStatus != null) PetInfoRow("Стерилизация", if (pet.sterilizationStatus) "Да" else "Нет")
-
-            if (pet.vaccinations.isNotEmpty()) PetInfoRow("Вакцинации", pet.vaccinations.joinToString(", "))
-            if (pet.chronicDiseases.isNotEmpty()) PetInfoRow("Хронические болезни", pet.chronicDiseases.joinToString(", "))
-            if (pet.allergies.isNotEmpty()) PetInfoRow("Аллергии", pet.allergies.joinToString(", "))
-            if (pet.personalityTraits.isNotEmpty()) PetInfoRow("Характер", pet.personalityTraits.joinToString(", "))
-            if (pet.medications.isNotEmpty()) PetInfoRow("Лекарства", pet.medications.joinToString(", "))
-
-            if (!pet.feedingSchedule.isNullOrBlank()) PetInfoRow("Режим кормления", pet.feedingSchedule)
-            if (!pet.walkingSchedule.isNullOrBlank()) PetInfoRow("Прогулки", pet.walkingSchedule)
-        }
-    }
-}
-
-@Composable
-private fun PetInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(0.4f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(0.6f)
-        )
     }
 }
 
