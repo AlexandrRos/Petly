@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -31,15 +30,18 @@ import ru.alexandrros.petly.domain.usecase.ObserveUserPetsUseCase
 import ru.alexandrros.petly.domain.usecase.RegisterUseCase
 import ru.alexandrros.petly.domain.usecase.UpdatePetUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateSpecialistUseCase
+import ru.alexandrros.petly.domain.usecase.UpdateUserPhotoUseCase
+import ru.alexandrros.petly.domain.usecase.UpdateUserProfileUseCase
 import ru.alexandrros.petly.presentation.common.navigation.AppNavGraph
 import ru.alexandrros.petly.presentation.common.theme.PetlyTheme
 import ru.alexandrros.petly.presentation.login.LoginViewModel
-import ru.alexandrros.petly.presentation.userpets.PetListViewModel
+import ru.alexandrros.petly.presentation.profile.EditProfileViewModel
+import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestViewModel
-import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
+import ru.alexandrros.petly.presentation.userpets.PetListViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -83,6 +85,8 @@ class MainActivity : ComponentActivity() {
                 val getAllRequestsUseCase = GetAllRequestsUseCase(requestRepository)
                 val checkExistingRequestUseCase = CheckExistingRequestUseCase(requestRepository)
                 val createRequestUseCase = CreateRequestUseCase(requestRepository)
+                val updateUserProfileUseCase = UpdateUserProfileUseCase(userRepository)
+                val updateUserPhotoUseCase = UpdateUserPhotoUseCase(userRepository)
 
                 // ---------- ViewModel factories ----------
                 val loginFactory = LoginViewModel.provideFactory(loginUseCase)
@@ -91,10 +95,13 @@ class MainActivity : ComponentActivity() {
                 val profileViewModelFactory = ProfileViewModel.Factory(
                     observeCurrentUserUseCase,
                     logoutUseCase,
-                    updateSpecialistUseCase
+                    updateSpecialistUseCase,
+                    updateUserPhotoUseCase
                 )
-                // Single instance of UserViewModel for the whole app
-                val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
+                val editProfileViewModelFactory = EditProfileViewModel.Factory(
+                    observeCurrentUserUseCase,
+                    updateUserProfileUseCase
+                )
 
                 val petListViewModelFactory = PetListViewModel.Factory(
                     observeUserPetsUseCase,
@@ -136,11 +143,12 @@ class MainActivity : ComponentActivity() {
                 AppNavGraph(
                     loginViewModelFactory = loginFactory,
                     registerViewModelFactory = registerFactory,
-                    profileViewModel = profileViewModel,  // note: renamed to profileViewModel
+                    profileViewModelFactory = profileViewModelFactory,
                     petListViewModelFactory = petListViewModelFactory,
                     requestViewModelFactory = requestViewModelFactory,
                     requestDetailViewModelFactory = requestDetailViewModelFactory,
-                    petDetailViewModelFactory = petDetailViewModelFactory
+                    petDetailViewModelFactory = petDetailViewModelFactory,
+                    editProfileViewModelFactory = editProfileViewModelFactory
                 )
             }
         }

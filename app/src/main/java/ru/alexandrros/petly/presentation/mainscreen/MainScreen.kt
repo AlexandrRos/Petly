@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
+import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.Profile
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
@@ -36,13 +37,15 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    profileViewModel: ProfileViewModel,
+    profileViewModelFactory: ProfileViewModel.Factory,
     petListViewModelFactory: ViewModelProvider.Factory,
     outerNavController: NavController,
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory
+    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
+    editProfileViewModelFactory: ViewModelProvider.Factory
 ) {
+    val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
     val petListViewModel: PetListViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
     val pets by petListViewModel.pets.collectAsState()
@@ -127,16 +130,23 @@ fun MainScreen(
 
             composable(Screen.Profile.route) {
                 Profile(
-                    user = currentUser,
+                    profileViewModel = profileViewModel,
                     onLogout = {
                         profileViewModel.logout()
                         outerNavController.navigate("login") {
                             popUpTo(0) { inclusive = true }
                         }
                     },
-                    onSpecialistToggle = { isSpecialist ->
-                        profileViewModel.setSpecialist(isSpecialist)
-                    }
+                    onSpecialistToggle = { isSpecialist -> profileViewModel.setSpecialist(isSpecialist) },
+                    onEditProfile = { nestedNavController.navigate(Screen.EditProfile.route) }
+                )
+            }
+
+            // Add EditProfile route
+            composable(Screen.EditProfile.route) {
+                EditProfileScreen(
+                    onBackClick = { nestedNavController.popBackStack() },
+                    viewModelFactory = editProfileViewModelFactory
                 )
             }
 
