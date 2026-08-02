@@ -146,7 +146,6 @@ fun MainScreen(
             ) { backStackEntry ->
                 val petId = backStackEntry.arguments?.getString("petId") ?: ""
                 PetDetailScreen(
-                    petId = petId,
                     onBackClick = { nestedNavController.popBackStack() },
                     onEditClick = { petToEdit ->
                         nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
