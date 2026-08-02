@@ -60,9 +60,11 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
 
 
-    implementation(platform(libs.firebase.bom))   // BOM with version
+    implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.kt)
 
 
     testImplementation(libs.junit)

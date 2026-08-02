@@ -53,4 +53,22 @@ class FirebaseUserRepository(
             Result.failure(e)
         }
     }
+
+    override suspend fun updateUserName(uid: String, name: String): Result<Unit> {
+        return try {
+            dataSource.updateUserName(uid, name)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUserPhoto(uid: String, photoBytes: ByteArray): Result<Unit> {
+        return try {
+            dataSource.updateUserPhoto(uid, photoBytes)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

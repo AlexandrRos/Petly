@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import ru.alexandrros.petly.data.remote.model.UserDto
+import ru.alexandrros.petly.data.remote.mapper.toBlob
+import ru.alexandrros.petly.data.remote.mapper.toBytes
 
 class FirebaseUserDataSource {
 
@@ -26,10 +28,10 @@ class FirebaseUserDataSource {
                 uid = uid,
                 email = email,
                 name = doc.getString("name") ?: "",
-                specialist = doc.getString("specialist")
+                specialist = doc.getString("specialist"),
+                photoBytes = doc.getBlob("photoBytes").toBytes()
             )
         } else {
-            // Create minimal document if missing
             firestore.collection("users").document(uid)
                 .set(mapOf("email" to email, "name" to ""))
                 .await()
@@ -43,11 +45,8 @@ class FirebaseUserDataSource {
         val userData = hashMapOf(
             "email" to email,
             "name" to name,
-            "login" to name,
-            "phone" to "",
-            "pets" to emptyList<String>(),
-            "requests" to emptyList<String>(),
-            "specialist" to "None"
+            "specialist" to "None",
+            "photoBytes" to null
         )
         firestore.collection("users").document(uid).set(userData).await()
         return UserDto(uid, email, name, "None")
@@ -55,7 +54,6 @@ class FirebaseUserDataSource {
 
     fun observeCurrentUser(): Flow<UserDto?> = callbackFlow {
         var firestoreListener: ListenerRegistration? = null
-
         val authListener = FirebaseAuth.AuthStateListener { authInstance ->
             val firebaseUser = authInstance.currentUser
             if (firebaseUser != null) {
@@ -71,7 +69,8 @@ class FirebaseUserDataSource {
                             uid = firebaseUser.uid,
                             email = firebaseUser.email ?: "",
                             name = snapshot.getString("name") ?: "",
-                            specialist = snapshot.getString("specialist")
+                            specialist = snapshot.getString("specialist"),
+                            photoBytes = snapshot.getBlob("photoBytes").toBytes()
                         )
                     } else {
                         UserDto(
@@ -87,16 +86,14 @@ class FirebaseUserDataSource {
                 trySend(null)
             }
         }
-
         auth.addAuthStateListener(authListener)
-
         awaitClose {
             auth.removeAuthStateListener(authListener)
             firestoreListener?.remove()
         }
     }
 
-    suspend fun logout() {
+     fun logout() {
         auth.signOut()
     }
 
@@ -108,7 +105,8 @@ class FirebaseUserDataSource {
                     uid = uid,
                     email = doc.getString("email") ?: "",
                     name = doc.getString("name") ?: "",
-                    specialist = doc.getString("specialist")
+                    specialist = doc.getString("specialist"),
+                    photoBytes = doc.getBlob("photoBytes").toBytes()
                 )
                 emit(dto)
             } else {
@@ -123,6 +121,18 @@ class FirebaseUserDataSource {
     suspend fun updateSpecialist(uid: String, specialist: String) {
         firestore.collection("users").document(uid)
             .update("specialist", specialist)
+            .await()
+    }
+
+    suspend fun updateUserName(uid: String, name: String) {
+        firestore.collection("users").document(uid)
+            .update("name", name)
+            .await()
+    }
+
+    suspend fun updateUserPhoto(uid: String, photoBytes: ByteArray) {
+        firestore.collection("users").document(uid)
+            .update("photoBytes", photoBytes.toBlob())
             .await()
     }
 }

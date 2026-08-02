@@ -16,11 +16,12 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 fun AppNavGraph(
     loginViewModelFactory: ViewModelProvider.Factory,
     registerViewModelFactory: ViewModelProvider.Factory,
-    profileViewModel: ProfileViewModel,
+    profileViewModelFactory: ProfileViewModel.Factory,
     petListViewModelFactory: ViewModelProvider.Factory,
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory
+    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
+    editProfileViewModelFactory: ViewModelProvider.Factory
 ) {
     val navController = rememberNavController()
 
@@ -45,13 +46,13 @@ fun AppNavGraph(
         }
         composable(Screen.Main.route) {
             MainScreen(
-                profileViewModel = profileViewModel,
+                profileViewModelFactory = profileViewModelFactory,
                 outerNavController = navController,
                 petListViewModelFactory = petListViewModelFactory,
                 requestViewModelFactory = requestViewModelFactory,
                 requestDetailViewModelFactory = requestDetailViewModelFactory,
-                petDetailViewModelFactory = petDetailViewModelFactory
-
+                petDetailViewModelFactory = petDetailViewModelFactory,
+                editProfileViewModelFactory = editProfileViewModelFactory
             )
         }
     }
