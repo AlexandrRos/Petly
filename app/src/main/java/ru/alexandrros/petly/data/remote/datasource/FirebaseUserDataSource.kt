@@ -4,7 +4,6 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -134,5 +133,29 @@ class FirebaseUserDataSource {
         firestore.collection("users").document(uid)
             .update("photoBytes", photoBytes.toBlob())
             .await()
+    }
+
+    fun getAllSpecialists(): Flow<List<UserDto>> = callbackFlow {
+        // Only one != filter allowed in firebase; Just in case nulls filtered client-side
+        val query = firestore.collection("users")
+            .whereNotEqualTo("specialist", "None")
+
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("UserDataSource", "getAllSpecialists error", error)
+                return@addSnapshotListener
+            }
+            val users = snapshot?.documents?.mapNotNull { doc ->
+                val uid = doc.id
+                val email = doc.getString("email") ?: ""
+                val name = doc.getString("name") ?: ""
+                val specialist = doc.getString("specialist") ?: return@mapNotNull null
+                val photoBytes = doc.getBlob("photoBytes")?.toBytes()
+                UserDto(uid, email, name, specialist, photoBytes)
+            } ?: emptyList()
+            trySend(users)
+        }
+
+        awaitClose { listener.remove() }
     }
 }

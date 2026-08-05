@@ -71,4 +71,9 @@ class FirebaseUserRepository(
             Result.failure(e)
         }
     }
+
+    override fun getAllSpecialists(): Flow<List<User>> {
+        return dataSource.getAllSpecialists()
+            .map { dtos -> dtos.map { it.toDomain() } }
+    }
 }

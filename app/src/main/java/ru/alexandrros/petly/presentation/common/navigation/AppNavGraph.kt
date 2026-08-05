@@ -21,7 +21,9 @@ fun AppNavGraph(
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
     petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    editProfileViewModelFactory: ViewModelProvider.Factory
+    editProfileViewModelFactory: ViewModelProvider.Factory,
+    specialistListViewModelFactory: ViewModelProvider.Factory,
+    specialistDetailViewModelFactory: (String) -> ViewModelProvider.Factory
 ) {
     val navController = rememberNavController()
 
@@ -52,7 +54,9 @@ fun AppNavGraph(
                 requestViewModelFactory = requestViewModelFactory,
                 requestDetailViewModelFactory = requestDetailViewModelFactory,
                 petDetailViewModelFactory = petDetailViewModelFactory,
-                editProfileViewModelFactory = editProfileViewModelFactory
+                editProfileViewModelFactory = editProfileViewModelFactory,
+                specialistListViewModelFactory = specialistListViewModelFactory,
+                specialistDetailViewModelFactory = specialistDetailViewModelFactory
             )
         }
     }

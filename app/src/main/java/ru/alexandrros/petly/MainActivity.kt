@@ -18,6 +18,7 @@ import ru.alexandrros.petly.domain.usecase.CreateRequestUseCase
 import ru.alexandrros.petly.domain.usecase.DeletePetUseCase
 import ru.alexandrros.petly.domain.usecase.DeleteRequestUseCase
 import ru.alexandrros.petly.domain.usecase.GetAllRequestsUseCase
+import ru.alexandrros.petly.domain.usecase.GetAllSpecialistsUseCase
 import ru.alexandrros.petly.domain.usecase.GetPetByIdUseCase
 import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestByIdUseCase
@@ -40,6 +41,8 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestViewModel
+import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
+import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
 import ru.alexandrros.petly.presentation.userpets.PetListViewModel
 
@@ -87,6 +90,8 @@ class MainActivity : ComponentActivity() {
                 val createRequestUseCase = CreateRequestUseCase(requestRepository)
                 val updateUserProfileUseCase = UpdateUserProfileUseCase(userRepository)
                 val updateUserPhotoUseCase = UpdateUserPhotoUseCase(userRepository)
+
+                val getAllSpecialistsUseCase = GetAllSpecialistsUseCase(userRepository)
 
                 // ---------- ViewModel factories ----------
                 val loginFactory = LoginViewModel.provideFactory(loginUseCase)
@@ -139,6 +144,17 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                val specialistListViewModelFactory = SpecialistListViewModel.Factory(
+                    getAllSpecialistsUseCase
+                )
+                val specialistDetailViewModelFactory: (String) -> ViewModelProvider.Factory =
+                    { id ->
+                        SpecialistDetailViewModel.Factory(
+                            id, getUserByIdUseCase
+                        )
+                    }
+
+
                 // ---------- Navigation ----------
                 AppNavGraph(
                     loginViewModelFactory = loginFactory,
@@ -148,7 +164,9 @@ class MainActivity : ComponentActivity() {
                     requestViewModelFactory = requestViewModelFactory,
                     requestDetailViewModelFactory = requestDetailViewModelFactory,
                     petDetailViewModelFactory = petDetailViewModelFactory,
-                    editProfileViewModelFactory = editProfileViewModelFactory
+                    editProfileViewModelFactory = editProfileViewModelFactory,
+                    specialistListViewModelFactory = specialistListViewModelFactory,
+                    specialistDetailViewModelFactory = specialistDetailViewModelFactory
                 )
             }
         }
