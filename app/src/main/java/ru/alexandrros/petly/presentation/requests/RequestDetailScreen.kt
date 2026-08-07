@@ -1,9 +1,9 @@
 package ru.alexandrros.petly.presentation.requests
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.AssistChip
@@ -42,12 +45,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.SectionCard
@@ -57,7 +62,8 @@ import ru.alexandrros.petly.presentation.common.components.SectionCard
 @Composable
 fun RequestDetailScreen(
     viewModel: RequestDetailViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onSpecialistClick: (specialistId: String) -> Unit
 ) {
     val request by viewModel.request.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -65,7 +71,6 @@ fun RequestDetailScreen(
     val specialistUser by viewModel.specialistUser.collectAsState()
     val canAccept by viewModel.canAccept.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { message ->
@@ -236,18 +241,74 @@ fun RequestDetailScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
-
             val specialist = specialistUser
             if (req.specialistUserId != null && specialist != null) {
                 SectionCard(
                     title = "Специалист",
-                    onClick = {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("not yet implemented")
-                        }
-                    }
+                    onClick = { onSpecialistClick(req.specialistUserId) }
                 ) {
-                    DetailRow("Email", specialist.email)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            if (specialist.photoBytes != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(specialist.photoBytes)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото специалиста",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = specialist.name.ifEmpty { specialist.email },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (specialist.name.isNotEmpty()) {
+                                Text(
+                                    text = specialist.email,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            specialist.specialist?.let { spec ->
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = spec,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Подробнее",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }

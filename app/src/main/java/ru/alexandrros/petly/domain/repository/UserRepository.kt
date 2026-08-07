@@ -12,5 +12,6 @@ interface UserRepository {
     fun getUserById(uid: String): Flow<User?>
     suspend fun updateSpecialist(uid: String, specialist: String): Result<Unit>
     suspend fun updateUserName(uid: String, name: String): Result<Unit>
-    suspend fun updateUserPhoto(uid: String, photoBytes: ByteArray): Result<Unit>  // changed
+    suspend fun updateUserPhoto(uid: String, photoBytes: ByteArray): Result<Unit>
+    fun getAllSpecialists(): Flow<List<User>>
 }

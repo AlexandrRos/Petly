@@ -25,7 +25,7 @@ import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.Profile
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
-import ru.alexandrros.petly.presentation.specialists.Specialists
+import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.UserPets
@@ -33,6 +33,9 @@ import ru.alexandrros.petly.presentation.userpets.PetListViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestViewModel
 import ru.alexandrros.petly.presentation.profile.ProfileViewModel
+import ru.alexandrros.petly.presentation.specialists.SpecialistDetailScreen
+import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
+import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +46,9 @@ fun MainScreen(
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
     petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    editProfileViewModelFactory: ViewModelProvider.Factory
+    editProfileViewModelFactory: ViewModelProvider.Factory,
+    specialistListViewModelFactory: ViewModelProvider.Factory,
+    specialistDetailViewModelFactory: (String) -> ViewModelProvider.Factory
 ) {
     val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
     val petListViewModel: PetListViewModel = viewModel(factory = petListViewModelFactory)
@@ -99,7 +104,29 @@ fun MainScreen(
             startDestination = Screen.Pets.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Specialists.route) { Specialists() }
+            composable(Screen.Specialists.route) {
+                val vm: SpecialistListViewModel = viewModel(factory = specialistListViewModelFactory)
+                SpecialistsScreen(
+                    viewModel = vm,
+                    onSpecialistClick = { specialistId ->
+                        nestedNavController.navigate(Screen.SpecialistDetail.createRoute(specialistId))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.SpecialistDetail.route,
+                arguments = listOf(navArgument("specialistId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val specialistId = backStackEntry.arguments?.getString("specialistId") ?: ""
+                val vm: SpecialistDetailViewModel = viewModel(
+                    factory = specialistDetailViewModelFactory(specialistId)
+                )
+                SpecialistDetailScreen(
+                    viewModel = vm,
+                    onBackClick = { nestedNavController.popBackStack() }
+                )
+            }
 
             composable(Screen.Pets.route) {
                 UserPets(
@@ -142,7 +169,6 @@ fun MainScreen(
                 )
             }
 
-            // Add EditProfile route
             composable(Screen.EditProfile.route) {
                 EditProfileScreen(
                     onBackClick = { nestedNavController.popBackStack() },
@@ -207,7 +233,10 @@ fun MainScreen(
                 )
                 RequestDetailScreen(
                     viewModel = viewModel,
-                    onBackClick = { nestedNavController.popBackStack() }
+                    onBackClick = { nestedNavController.popBackStack() },
+                    onSpecialistClick = { specialistId ->
+                        nestedNavController.navigate(Screen.SpecialistDetail.createRoute(specialistId))
+                    }
                 )
             }
         }
