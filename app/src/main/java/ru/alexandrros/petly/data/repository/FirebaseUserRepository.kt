@@ -1,6 +1,7 @@
 package ru.alexandrros.petly.data.repository
 
 
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import ru.alexandrros.petly.data.remote.datasource.FirebaseUserDataSource
@@ -75,5 +76,9 @@ class FirebaseUserRepository(
     override fun getAllSpecialists(): Flow<List<User>> {
         return dataSource.getAllSpecialists()
             .map { dtos -> dtos.map { it.toDomain() } }
+    }
+
+    override fun isUserLoggedIn(): Boolean {
+        return FirebaseAuth.getInstance().currentUser != null
     }
 }

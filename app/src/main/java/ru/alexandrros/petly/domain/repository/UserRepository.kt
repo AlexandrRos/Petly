@@ -14,4 +14,5 @@ interface UserRepository {
     suspend fun updateUserName(uid: String, name: String): Result<Unit>
     suspend fun updateUserPhoto(uid: String, photoBytes: ByteArray): Result<Unit>
     fun getAllSpecialists(): Flow<List<User>>
+    fun isUserLoggedIn(): Boolean
 }

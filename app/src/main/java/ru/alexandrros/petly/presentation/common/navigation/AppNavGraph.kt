@@ -14,6 +14,7 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 
 @Composable
 fun AppNavGraph(
+    startDestination: String,
     loginViewModelFactory: ViewModelProvider.Factory,
     registerViewModelFactory: ViewModelProvider.Factory,
     profileViewModelFactory: ProfileViewModel.Factory,
@@ -27,7 +28,10 @@ fun AppNavGraph(
 ) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Screen.Login.route) {
+    NavHost(
+        navController = navController,
+        startDestination = startDestination
+    ) {
         composable(Screen.Login.route) {
             LoginRoute(
                 factory = loginViewModelFactory,

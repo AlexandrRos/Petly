@@ -4,6 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +29,7 @@ import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestByIdUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestsByCreatorUseCase
 import ru.alexandrros.petly.domain.usecase.GetUserByIdUseCase
+import ru.alexandrros.petly.domain.usecase.IsUserLoggedInUseCase
 import ru.alexandrros.petly.domain.usecase.LoginUseCase
 import ru.alexandrros.petly.domain.usecase.LogoutUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
@@ -34,6 +40,7 @@ import ru.alexandrros.petly.domain.usecase.UpdateSpecialistUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserPhotoUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserProfileUseCase
 import ru.alexandrros.petly.presentation.common.navigation.AppNavGraph
+import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.common.theme.PetlyTheme
 import ru.alexandrros.petly.presentation.login.LoginViewModel
 import ru.alexandrros.petly.presentation.profile.EditProfileViewModel
@@ -88,6 +95,8 @@ class MainActivity : ComponentActivity() {
                 val getAllRequestsUseCase = GetAllRequestsUseCase(requestRepository)
                 val checkExistingRequestUseCase = CheckExistingRequestUseCase(requestRepository)
                 val createRequestUseCase = CreateRequestUseCase(requestRepository)
+
+                val isUserLoggedInUseCase = IsUserLoggedInUseCase(userRepository)
                 val updateUserProfileUseCase = UpdateUserProfileUseCase(userRepository)
                 val updateUserPhotoUseCase = UpdateUserPhotoUseCase(userRepository)
 
@@ -154,9 +163,24 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                var startDestination by remember {
+                    mutableStateOf(
+                        if (isUserLoggedInUseCase()) Screen.Main.route
+                        else Screen.Login.route
+                    )
+                }
+
+                //For possible log-out outside app
+                LaunchedEffect(Unit) {
+                    observeCurrentUserUseCase().collect { user ->
+                        startDestination = if (user != null) Screen.Main.route
+                        else Screen.Login.route
+                    }
+                }
 
                 // ---------- Navigation ----------
                 AppNavGraph(
+                    startDestination = startDestination,
                     loginViewModelFactory = loginFactory,
                     registerViewModelFactory = registerFactory,
                     profileViewModelFactory = profileViewModelFactory,
