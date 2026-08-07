@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.SectionCard
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,10 @@ fun SpecialistDetailScreen(
 ) {
     val specialist by viewModel.specialist.collectAsState()
 
+    val contentInsets = rememberContentInsets()
+
     Scaffold(
+        contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
                 title = { Text(specialist?.name?.ifEmpty { "Специалист" } ?: "Специалист", style = MaterialTheme.typography.headlineSmall) },

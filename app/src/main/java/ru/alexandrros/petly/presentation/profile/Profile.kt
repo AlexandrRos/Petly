@@ -48,10 +48,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.flow.collectLatest
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.SectionCard
-import coil.request.ImageRequest
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,8 @@ fun Profile(
     val user by profileViewModel.currentUser.collectAsState()
     val isUpdatingPhoto by profileViewModel.isUpdatingPhoto.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val contentInsets = rememberContentInsets()
 
     val context = LocalContext.current
 
@@ -80,6 +83,7 @@ fun Profile(
         }
     }
     Scaffold(
+        contentWindowInsets = contentInsets,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
