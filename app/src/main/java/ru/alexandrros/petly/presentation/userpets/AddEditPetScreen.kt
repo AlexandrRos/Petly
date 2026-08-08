@@ -4,14 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ru.alexandrros.petly.domain.model.Pet
+import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,8 +61,10 @@ fun AddEditPetScreen(
     var feedingSchedule by remember { mutableStateOf(pet?.feedingSchedule ?: "") }
     var walkingSchedule by remember { mutableStateOf(pet?.walkingSchedule ?: "") }
 
+    val contentInsets = rememberContentInsets()
+
     Scaffold(
-        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top),
+        contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
                 title = {
@@ -163,16 +162,16 @@ fun AddEditPetScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(
+                    OutlinedFilterChip(
                         selected = isMale,
                         onClick = { isMale = true },
-                        label = { Text("Мужской") }
+                        text ="Мужской"
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(
+                    OutlinedFilterChip(
                         selected = !isMale,
                         onClick = { isMale = false },
-                        label = { Text("Женский") }
+                        text ="Женский"
                     )
                 }
 

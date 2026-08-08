@@ -1,19 +1,13 @@
 package ru.alexandrros.petly.presentation.userpets
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,14 +37,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
+import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,14 +60,7 @@ fun PetDetailScreen(
     val pet by viewModel.pet.collectAsState()
     val isCreating by viewModel.isCreatingRequest.collectAsState()
 
-
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val currentWindowInsets = if (isLandscape) {
-        WindowInsets.safeDrawing
-    } else {
-        WindowInsets.systemBars.only(WindowInsetsSides.Top)
-    }
+    val contentInsets = rememberContentInsets()
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { message ->
@@ -83,7 +70,7 @@ fun PetDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        contentWindowInsets = currentWindowInsets,
+        contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
                 title = { Text(pet?.name ?: "", style = MaterialTheme.typography.headlineSmall) },
@@ -175,10 +162,8 @@ fun PetDetailScreen(
                 if (currentPet.personalityTraits.isNotEmpty()) {
                     SectionCard(title = "Характер") {
                         currentPet.personalityTraits.forEach { trait ->
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(trait) },
-                                modifier = Modifier.padding(vertical = 2.dp)
+                            OutlinedAssistChip(
+                                text = trait
                             )
                         }
                     }

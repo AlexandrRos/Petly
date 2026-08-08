@@ -1,20 +1,14 @@
 package ru.alexandrros.petly.presentation.requests
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,14 +41,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
+import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +66,8 @@ fun RequestDetailScreen(
     val canAccept by viewModel.canAccept.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val contentInsets = rememberContentInsets()
+
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { message ->
             snackbarHostState.showSnackbar(message)
@@ -84,17 +80,9 @@ fun RequestDetailScreen(
         }
     }
 
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val contentWindowInsets = if (isLandscape) {
-        WindowInsets.safeDrawing
-    } else {
-        WindowInsets.systemBars.only(WindowInsetsSides.Top)
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        contentWindowInsets = contentWindowInsets,
+        contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
                 title = { Text("Заявка", style = MaterialTheme.typography.headlineSmall) },
@@ -211,10 +199,8 @@ fun RequestDetailScreen(
                 if (currentPet.personalityTraits.isNotEmpty()) {
                     SectionCard(title = "Характер") {
                         currentPet.personalityTraits.forEach { trait ->
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(trait) },
-                                modifier = Modifier.padding(vertical = 2.dp)
+                            OutlinedAssistChip(
+                                text = trait,
                             )
                         }
                     }

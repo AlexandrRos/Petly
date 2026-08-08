@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import ru.alexandrros.petly.domain.model.User
+import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,10 @@ fun SpecialistsScreen(
 ) {
     val specialists by viewModel.specialists.collectAsState()
 
+    val contentInsets = rememberContentInsets()
+
     Scaffold(
+        contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
                 title = { Text("Специалисты", style = MaterialTheme.typography.headlineSmall) },
