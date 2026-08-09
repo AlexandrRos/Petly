@@ -1,9 +1,10 @@
-package ru.alexandrros.petly.data.repository;
+package ru.alexandrros.petly.data.repository
 
 
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +30,7 @@ class FirebasePetRepository(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) : PetRepository {
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private val petsFlow: Flow<List<Pet>> = userIdFlow
         .flatMapLatest { uid ->
             if (uid.isEmpty()) flowOf(emptyList())
@@ -51,13 +53,23 @@ class FirebasePetRepository(
     override fun getPetById(id: String): Pet? = petsState.value.find { it.id == id }
 
     override fun getPetById(userId: String, petId: String): Flow<Pet?> = flow {
-        val dto = dataSource.getPetById(userId, petId)
+        val dto = dataSource.getPetByIdCachedFirst(userId, petId)
         emit(dto?.toDomain())
     }.catch { e ->
         if (e is CancellationException) throw e
         Log.e("FirebasePetRepo", "Error fetching pet by id", e)
         emit(null)
     }
+
+    //for PetDetailScreen update after editing
+    override fun observePetById(userId: String, petId: String): Flow<Pet?> =
+        dataSource.observePetById(userId, petId)
+            .map { dto -> dto?.toDomain() }
+            .catch { e ->
+                if (e is CancellationException) throw e
+                Log.e("FirebasePetRepo", "Error observing pet by id", e)
+                emit(null)
+            }
 
     override suspend fun addPet(pet: Pet) {
         val uid = userIdFlow.first()

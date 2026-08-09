@@ -2,6 +2,7 @@ package ru.alexandrros.petly.data.remote.datasource
 
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +45,37 @@ class FirebasePetDataSource {
             Log.e("FirebasePetDS", "getPetById error", e)
             null
         }
+    }
+
+    //for PetDetailScreen update after editing
+    fun observePetById(userId: String, petId: String): Flow<PetDto?> = callbackFlow {
+        val docRef = petsCollection(userId).document(petId)
+        val listener = docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            if (snapshot != null && snapshot.exists()) {
+                val dto = snapshot.toObject<PetDto>()?.copy(id = snapshot.id)
+                trySend(dto)
+            } else {
+                trySend(null)
+            }
+        }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun getPetByIdCachedFirst(userId: String, petId: String): PetDto? {
+        val cacheDoc = try {
+            petsCollection(userId).document(petId)
+                .get(Source.CACHE).await()
+        } catch (e: Exception) {
+            null
+        }
+        if (cacheDoc != null && cacheDoc.exists()) {
+            return cacheDoc.toObject<PetDto>()?.copy(id = petId)
+        }
+        return getPetById(userId, petId)
     }
 
     suspend fun addPet(userId: String, pet: PetDto): String {

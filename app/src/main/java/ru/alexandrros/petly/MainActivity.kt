@@ -33,6 +33,7 @@ import ru.alexandrros.petly.domain.usecase.IsUserLoggedInUseCase
 import ru.alexandrros.petly.domain.usecase.LoginUseCase
 import ru.alexandrros.petly.domain.usecase.LogoutUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
+import ru.alexandrros.petly.domain.usecase.ObservePetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveUserPetsUseCase
 import ru.alexandrros.petly.domain.usecase.RegisterUseCase
 import ru.alexandrros.petly.domain.usecase.UpdatePetUseCase
@@ -87,6 +88,8 @@ class MainActivity : ComponentActivity() {
                 val updatePetUseCase = UpdatePetUseCase(petRepository)
                 val deletePetUseCase = DeletePetUseCase(petRepository)
                 val getPetByUserUseCase = GetPetByUserUseCase(petRepository)
+                //for PetDetailScreen update after editing
+                val observePetByUserUseCase = ObservePetByUserUseCase(petRepository)
 
                 val getRequestByIdUseCase = GetRequestByIdUseCase(requestRepository)
                 val acceptRequestUseCase = AcceptRequestUseCase(requestRepository)
@@ -128,7 +131,8 @@ class MainActivity : ComponentActivity() {
                 val requestViewModelFactory = RequestViewModel.Factory(
                     observeCurrentUserUseCase,
                     getRequestsByCreatorUseCase,
-                    getAllRequestsUseCase
+                    getAllRequestsUseCase,
+                    getPetByUserUseCase
                 )
 
                 val requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory = { requestId ->
@@ -147,7 +151,7 @@ class MainActivity : ComponentActivity() {
                     PetDetailViewModel.Factory(
                         petId,
                         observeCurrentUserUseCase,
-                        getPetByUserUseCase,
+                        observePetByUserUseCase,
                         checkExistingRequestUseCase,
                         createRequestUseCase
                     )

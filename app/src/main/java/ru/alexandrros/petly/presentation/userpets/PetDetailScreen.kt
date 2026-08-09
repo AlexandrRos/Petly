@@ -37,9 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
@@ -107,13 +112,27 @@ fun PetDetailScreen(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Pets,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(64.dp)
+                    if (currentPet.photoBytes != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(currentPet.photoBytes)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Фото питомца",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Pets,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(64.dp)
+                            )
+                        }
                     }
                 }
 
@@ -162,9 +181,7 @@ fun PetDetailScreen(
                 if (currentPet.personalityTraits.isNotEmpty()) {
                     SectionCard(title = "Характер") {
                         currentPet.personalityTraits.forEach { trait ->
-                            OutlinedAssistChip(
-                                text = trait
-                            )
+                            OutlinedAssistChip(text = trait)
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))

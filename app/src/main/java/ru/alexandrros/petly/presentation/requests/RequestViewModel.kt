@@ -10,19 +10,25 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.usecase.GetAllRequestsUseCase
+import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestsByCreatorUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 
 class RequestViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
     private val getRequestsByCreator: GetRequestsByCreatorUseCase,
-    private val getAllRequests: GetAllRequestsUseCase
+    private val getAllRequests: GetAllRequestsUseCase,
+    private val getPetByUser: GetPetByUserUseCase
 ) : ViewModel() {
 
     private val currentUserId: StateFlow<String?> = observeCurrentUser()
@@ -36,6 +42,12 @@ class RequestViewModel(
     fun setSpecialist(isSpecialist: Boolean) {
         this.isSpecialist.value = isSpecialist
     }
+
+    private val _photoCache = MutableStateFlow<Map<String, ByteArray?>>(emptyMap())
+    val photoCache: StateFlow<Map<String, ByteArray?>> = _photoCache
+
+    // To prevent fetching the same request twice
+    private val loadingRequestIds = mutableSetOf<String>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val requests: StateFlow<List<Request>> = combine(
@@ -56,6 +68,24 @@ class RequestViewModel(
         }
     }
         .flatMapLatest { it }
+        .onEach { requestList ->
+            requestList.forEach { req ->
+                val reqId = req.id
+                if (reqId !in _photoCache.value && reqId !in loadingRequestIds) {
+                    loadingRequestIds.add(reqId)
+                    viewModelScope.launch {
+                        try {
+                            val pet = getPetByUser(req.creatorUserId, req.petId).first()
+                            _photoCache.update { it + (reqId to pet?.photoBytes) }
+                        } catch (e: Exception) {
+                            _photoCache.update { it + (reqId to null) }
+                        } finally {
+                            loadingRequestIds.remove(reqId)
+                        }
+                    }
+                }
+            }
+        }
         .catch { e ->
             Log.e("RequestViewModel", "Request flow error", e)
             val lastKnown = requests.value
@@ -70,7 +100,8 @@ class RequestViewModel(
     class Factory(
         private val observeCurrentUser: ObserveCurrentUserUseCase,
         private val getRequestsByCreator: GetRequestsByCreatorUseCase,
-        private val getAllRequests: GetAllRequestsUseCase
+        private val getAllRequests: GetAllRequestsUseCase,
+        private val getPetByUser: GetPetByUserUseCase
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(RequestViewModel::class.java)) {
@@ -78,7 +109,8 @@ class RequestViewModel(
                 return RequestViewModel(
                     observeCurrentUser,
                     getRequestsByCreator,
-                    getAllRequests
+                    getAllRequests,
+                    getPetByUser
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")

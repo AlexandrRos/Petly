@@ -120,6 +120,8 @@ fun RequestDetailScreen(
             return@Scaffold
         }
 
+        val petPhotoBytes = pet?.photoBytes
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -133,13 +135,25 @@ fun RequestDetailScreen(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Pets,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(64.dp)
+                if (petPhotoBytes != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(petPhotoBytes)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Фото питомца",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Pets,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(64.dp)
+                        )
+                    }
                 }
             }
 
