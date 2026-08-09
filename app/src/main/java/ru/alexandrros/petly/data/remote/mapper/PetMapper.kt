@@ -1,5 +1,6 @@
 package ru.alexandrros.petly.data.remote.mapper
 
+import com.google.firebase.firestore.Blob
 import ru.alexandrros.petly.data.remote.model.PetDto
 import ru.alexandrros.petly.domain.model.Pet
 
@@ -20,7 +21,7 @@ fun PetDto.toDomain(): Pet = Pet(
     feedingSchedule = feedingSchedule,
     walkingSchedule = walkingSchedule,
     medications = medications,
-    photoRes = photoRes
+    photoBytes = photoBlob?.toBytes()
 )
 
 fun Pet.toDto(): PetDto = PetDto(
@@ -40,5 +41,5 @@ fun Pet.toDto(): PetDto = PetDto(
     feedingSchedule = feedingSchedule,
     walkingSchedule = walkingSchedule,
     medications = medications,
-    photoRes = photoRes
+    photoBlob = photoBytes?.let { Blob.fromBytes(it) }
 )

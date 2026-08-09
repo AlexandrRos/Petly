@@ -1,5 +1,6 @@
 package ru.alexandrros.petly.data.remote.model
 
+import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentId
 
 data class PetDto(
@@ -19,5 +20,5 @@ data class PetDto(
     val feedingSchedule: String? = null,
     val walkingSchedule: String? = null,
     val medications: List<String> = emptyList(),
-    val photoRes: Int? = null
+    val photoBlob: Blob? = null
 )

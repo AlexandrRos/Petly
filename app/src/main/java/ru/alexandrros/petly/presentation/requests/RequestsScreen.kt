@@ -36,7 +36,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
@@ -50,6 +54,7 @@ fun RequestsScreen(
 ) {
     val requests by requestViewModel.requests.collectAsState()
     val showMyRequests by requestViewModel.showMyRequests.collectAsState()
+    val photoCache by requestViewModel.photoCache.collectAsState()
 
     val contentInsets = rememberContentInsets()
 
@@ -100,6 +105,7 @@ fun RequestsScreen(
                 items(requests, key = { it.id }) { request ->
                     RequestCard(
                         request = request,
+                        photoBytes = photoCache[request.id],
                         onClick = { onRequestClick(request.id) }
                     )
                 }
@@ -109,7 +115,11 @@ fun RequestsScreen(
 }
 
 @Composable
-private fun RequestCard(request: Request, onClick: () -> Unit) {
+private fun RequestCard(
+    request: Request,
+    photoBytes: ByteArray?,
+    onClick: () -> Unit
+) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,13 +139,25 @@ private fun RequestCard(request: Request, onClick: () -> Unit) {
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Pets,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(32.dp)
+                if (photoBytes != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photoBytes)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Фото питомца",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Pets,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
 

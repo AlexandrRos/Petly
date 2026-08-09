@@ -1,6 +1,15 @@
 package ru.alexandrros.petly.presentation.userpets
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,20 +17,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -31,16 +46,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
+import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPetScreen(
-    pet: Pet?,                          // null – создание, иначе – редактирование
+    pet: Pet?,
     onSave: (Pet) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -60,6 +81,18 @@ fun AddEditPetScreen(
 
     var feedingSchedule by remember { mutableStateOf(pet?.feedingSchedule ?: "") }
     var walkingSchedule by remember { mutableStateOf(pet?.walkingSchedule ?: "") }
+
+    var photoBytes by remember { mutableStateOf(pet?.photoBytes) }
+
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val bytes = readAndCompressPhoto(context, it, maxSizeKB = 100)
+            photoBytes = bytes
+        }
+    }
 
     val contentInsets = rememberContentInsets()
 
@@ -81,8 +114,8 @@ fun AddEditPetScreen(
                 actions = {
                     IconButton(onClick = {
                         val newPet = Pet(
-                            id = pet?.id ?: "",          // для нового – пустая строка, репозиторий сам присвоит
-                            userId = pet?.userId ?: "",  // так же будет заполнено
+                            id = pet?.id ?: "",
+                            userId = pet?.userId ?: "",
                             name = name,
                             species = species,
                             breed = breed.ifBlank { null },
@@ -96,7 +129,8 @@ fun AddEditPetScreen(
                             personalityTraits = personalityTraitsText.split(",").map { it.trim() }.filter { it.isNotBlank() },
                             feedingSchedule = feedingSchedule.ifBlank { null },
                             walkingSchedule = walkingSchedule.ifBlank { null },
-                            medications = medicationsText.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                            medications = medicationsText.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                            photoBytes = photoBytes
                         )
                         onSave(newPet)
                     }) {
@@ -118,6 +152,66 @@ fun AddEditPetScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Box(
+                contentAlignment = Alignment.BottomEnd,
+                modifier = Modifier
+                    .size(120.dp)
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                if (photoBytes != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(photoBytes)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Фото питомца",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Pets,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(64.dp)
+                            )
+                        }
+                    }
+                }
+
+                IconButton(
+                    onClick = { launcher.launch("image/*") },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Сменить фото",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            if (photoBytes != null) {
+                TextButton(
+                    onClick = { photoBytes = null },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Удалить фото")
+                }
+            }
+
             SectionCard(title = "Основная информация") {
                 OutlinedTextField(
                     value = name,
@@ -250,4 +344,29 @@ fun AddEditPetScreen(
             }
         }
     }
+}
+
+private fun readAndCompressPhoto(context: Context, uri: Uri, maxSizeKB: Int): ByteArray? {
+    return try {
+        val rawBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        rawBytes?.let { compressBytes(it, maxSizeKB * 1024) }
+    } catch (e: Exception) {
+        Log.e("AddEditPet", "Failed to read/compress image", e)
+        null
+    }
+}
+
+private fun compressBytes(bytes: ByteArray, maxSizeBytes: Int): ByteArray {
+    if (bytes.size <= maxSizeBytes) return bytes
+    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return bytes
+    var quality = 80
+    var output: ByteArray
+    do {
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)
+        output = baos.toByteArray()
+        quality -= 10
+    } while (output.size > maxSizeBytes && quality > 10)
+    bitmap.recycle()
+    return output
 }

@@ -19,13 +19,13 @@ import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.usecase.CheckExistingRequestUseCase
 import ru.alexandrros.petly.domain.usecase.CreateRequestUseCase
-import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
+import ru.alexandrros.petly.domain.usecase.ObservePetByUserUseCase
 
 class PetDetailViewModel(
     private val petId: String,
     private val observeCurrentUser: ObserveCurrentUserUseCase,
-    private val getPetByUser: GetPetByUserUseCase,
+    private val observePetByUser: ObservePetByUserUseCase,
     private val checkExistingRequest: CheckExistingRequestUseCase,
     private val createRequest: CreateRequestUseCase
 ) : ViewModel() {
@@ -43,11 +43,10 @@ class PetDetailViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val pet: StateFlow<Pet?> = currentUserId
         .flatMapLatest { uid ->
-            if (uid != null) getPetByUser(uid, petId)
+            if (uid != null) observePetByUser(uid, petId)   // <-- real‑time flow
             else flowOf(null)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
     fun createRequest(petId: String, petName: String, species: String) {
         viewModelScope.launch {
             _isCreatingRequest.value = true
@@ -81,7 +80,7 @@ class PetDetailViewModel(
     class Factory(
         private val petId: String,
         private val observeCurrentUser: ObserveCurrentUserUseCase,
-        private val getPetByUser: GetPetByUserUseCase,
+        private val observePetByUserUseCase: ObservePetByUserUseCase,
         private val checkExistingRequest: CheckExistingRequestUseCase,
         private val createRequest: CreateRequestUseCase
     ) : ViewModelProvider.Factory {
@@ -89,7 +88,7 @@ class PetDetailViewModel(
             if (modelClass.isAssignableFrom(PetDetailViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
                 return PetDetailViewModel(
-                    petId, observeCurrentUser, getPetByUser,
+                    petId, observeCurrentUser, observePetByUserUseCase,
                     checkExistingRequest, createRequest
                 ) as T
             }
