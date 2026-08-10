@@ -46,7 +46,7 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserPets(
+fun PetsScreen(
     pets: List<Pet>,
     onPetClick: (Pet) -> Unit,
     onAddClick: () -> Unit

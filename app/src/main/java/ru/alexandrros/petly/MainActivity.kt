@@ -48,11 +48,11 @@ import ru.alexandrros.petly.presentation.profile.EditProfileViewModel
 import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
-import ru.alexandrros.petly.presentation.requests.RequestViewModel
+import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
-import ru.alexandrros.petly.presentation.userpets.PetListViewModel
+import ru.alexandrros.petly.presentation.userpets.PetsViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
                     updateUserProfileUseCase
                 )
 
-                val petListViewModelFactory = PetListViewModel.Factory(
+                val petsViewModelFactory = PetsViewModel.Factory(
                     observeUserPetsUseCase,
                     getPetByIdUseCase,
                     addPetUseCase,
@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
                     deletePetUseCase
                 )
 
-                val requestViewModelFactory = RequestViewModel.Factory(
+                val requestsViewModelFactory = RequestsViewModel.Factory(
                     observeCurrentUserUseCase,
                     getRequestsByCreatorUseCase,
                     getAllRequestsUseCase,
@@ -188,8 +188,8 @@ class MainActivity : ComponentActivity() {
                     loginViewModelFactory = loginFactory,
                     registerViewModelFactory = registerFactory,
                     profileViewModelFactory = profileViewModelFactory,
-                    petListViewModelFactory = petListViewModelFactory,
-                    requestViewModelFactory = requestViewModelFactory,
+                    petListViewModelFactory = petsViewModelFactory,
+                    requestViewModelFactory = requestsViewModelFactory,
                     requestDetailViewModelFactory = requestDetailViewModelFactory,
                     petDetailViewModelFactory = petDetailViewModelFactory,
                     editProfileViewModelFactory = editProfileViewModelFactory,

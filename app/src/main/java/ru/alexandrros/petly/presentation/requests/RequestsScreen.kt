@@ -48,13 +48,13 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestsScreen(
-    requestViewModel: RequestViewModel,
+    requestsViewModel: RequestsViewModel,
     isSpecialist: Boolean,
     onRequestClick: (requestId: String) -> Unit
 ) {
-    val requests by requestViewModel.requests.collectAsState()
-    val showMyRequests by requestViewModel.showMyRequests.collectAsState()
-    val photoCache by requestViewModel.photoCache.collectAsState()
+    val requests by requestsViewModel.requests.collectAsState()
+    val showMyRequests by requestsViewModel.showMyRequests.collectAsState()
+    val photoCache by requestsViewModel.photoCache.collectAsState()
 
     val contentInsets = rememberContentInsets()
 
@@ -64,7 +64,7 @@ fun RequestsScreen(
                 title = { Text("Заявки", style = MaterialTheme.typography.headlineSmall) },
                 actions = {
                     if (isSpecialist) {
-                        TextButton(onClick = { requestViewModel.toggleView() }) {
+                        TextButton(onClick = { requestsViewModel.toggleView() }) {
                             Text(
                                 text = if (showMyRequests) "Мои заявки" else "Все заявки",
                                 color = MaterialTheme.colorScheme.primary
