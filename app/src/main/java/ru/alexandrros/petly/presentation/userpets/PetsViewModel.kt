@@ -12,7 +12,7 @@ import ru.alexandrros.petly.domain.usecase.GetPetByIdUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveUserPetsUseCase
 import ru.alexandrros.petly.domain.usecase.UpdatePetUseCase
 
-class PetListViewModel(
+class PetsViewModel(
     private val observeUserPets: ObserveUserPetsUseCase,
     private val getPetByIdUseCase: GetPetByIdUseCase,
     private val addPetUseCase: AddPetUseCase,
@@ -50,9 +50,9 @@ class PetListViewModel(
         private val deletePetUseCase: DeletePetUseCase
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(PetListViewModel::class.java)) {
+            if (modelClass.isAssignableFrom(PetsViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return PetListViewModel(
+                return PetsViewModel(
                     observeUserPets,
                     getPetByIdUseCase,
                     addPetUseCase,

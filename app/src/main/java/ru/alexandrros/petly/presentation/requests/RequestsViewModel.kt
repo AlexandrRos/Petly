@@ -24,7 +24,7 @@ import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestsByCreatorUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 
-class RequestViewModel(
+class RequestsViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
     private val getRequestsByCreator: GetRequestsByCreatorUseCase,
     private val getAllRequests: GetAllRequestsUseCase,
@@ -104,9 +104,9 @@ class RequestViewModel(
         private val getPetByUser: GetPetByUserUseCase
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(RequestViewModel::class.java)) {
+            if (modelClass.isAssignableFrom(RequestsViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
-                return RequestViewModel(
+                return RequestsViewModel(
                     observeCurrentUser,
                     getRequestsByCreator,
                     getAllRequests,
