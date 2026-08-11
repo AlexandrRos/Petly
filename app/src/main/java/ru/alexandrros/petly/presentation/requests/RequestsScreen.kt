@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -52,11 +53,12 @@ fun RequestsScreen(
     isSpecialist: Boolean,
     onRequestClick: (requestId: String) -> Unit
 ) {
-    val requests by requestsViewModel.requests.collectAsState()
-    val showMyRequests by requestsViewModel.showMyRequests.collectAsState()
-    val photoCache by requestsViewModel.photoCache.collectAsState()
-
+    val uiState by requestsViewModel.uiState.collectAsState()
     val contentInsets = rememberContentInsets()
+
+    LaunchedEffect(isSpecialist) {
+        requestsViewModel.setSpecialist(isSpecialist)
+    }
 
     Scaffold(
         topBar = {
@@ -66,7 +68,7 @@ fun RequestsScreen(
                     if (isSpecialist) {
                         TextButton(onClick = { requestsViewModel.toggleView() }) {
                             Text(
-                                text = if (showMyRequests) "Мои заявки" else "Все заявки",
+                                text = if (uiState.showMyRequests) "Мои заявки" else "Все заявки",
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -80,7 +82,7 @@ fun RequestsScreen(
         },
         contentWindowInsets = contentInsets
     ) { innerPadding ->
-        if (requests.isEmpty()) {
+        if (uiState.requests.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -88,7 +90,7 @@ fun RequestsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (!isSpecialist || showMyRequests) "У вас пока нет заявок"
+                    text = if (!isSpecialist || uiState.showMyRequests) "У вас пока нет заявок"
                     else "Нет заявок от других пользователей",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -102,10 +104,10 @@ fun RequestsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(requests, key = { it.id }) { request ->
+                items(uiState.requests, key = { it.id }) { request ->
                     RequestCard(
                         request = request,
-                        photoBytes = photoCache[request.id],
+                        photoBytes = uiState.photoCache[request.id],
                         onClick = { onRequestClick(request.id) }
                     )
                 }

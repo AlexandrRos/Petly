@@ -12,13 +12,6 @@ import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.usecase.RegisterUseCase
 import kotlin.onSuccess
 
-data class RegisterUiState(
-    val isLoading: Boolean = false,
-    val isSuccess: Boolean = false,
-    val isError: Boolean = false,
-    val errorMessage: String? = null
-)
-
 class RegisterViewModel(
     private val registerUseCase: RegisterUseCase
 ) : ViewModel() {

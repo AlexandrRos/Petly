@@ -9,14 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.usecase.LoginUseCase
 
-data class LoginUiState(
-    val isLoading: Boolean = false,
-    val isSuccess: Boolean = false,
-    val isError: Boolean = false,
-    val errorMessage: String? = null
-)
-
-
 class LoginViewModel(
     private val loginUseCase: LoginUseCase
 ) : ViewModel() {
