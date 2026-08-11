@@ -57,7 +57,7 @@ import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
-
+import ru.alexandrros.petly.presentation.common.formatTimestamp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,11 +66,7 @@ fun RequestDetailScreen(
     onBackClick: () -> Unit,
     onSpecialistClick: (specialistId: String) -> Unit
 ) {
-    val request by viewModel.request.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val pet by viewModel.pet.collectAsState()
-    val specialistUser by viewModel.specialistUser.collectAsState()
-    val canAccept by viewModel.canAccept.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val contentInsets = rememberContentInsets()
@@ -81,8 +77,8 @@ fun RequestDetailScreen(
         }
     }
 
-    LaunchedEffect(isLoading, request) {
-        if (!isLoading && request == null) {
+    LaunchedEffect(uiState.isLoading, uiState.request) {
+        if (!uiState.isLoading && uiState.request == null) {
             onBackClick()
         }
     }
@@ -102,7 +98,7 @@ fun RequestDetailScreen(
                     }
                 },
                 actions = {
-                    if (viewModel.isOwner()) {
+                    if (uiState.isOwner) {
                         IconButton(onClick = { viewModel.deleteRequest() }) {
                             Icon(Icons.Default.Delete, contentDescription = "Удалить заявку")
                         }
@@ -115,14 +111,14 @@ fun RequestDetailScreen(
             )
         }
     ) { padding ->
-        if (isLoading) {
+        if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@Scaffold
         }
 
-        val req = request
+        val req = uiState.request
         if (req == null) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("Заявка не найдена", style = MaterialTheme.typography.bodyLarge)
@@ -130,8 +126,8 @@ fun RequestDetailScreen(
             return@Scaffold
         }
 
-        val petPhotoBytes = pet?.photoBytes
-        val specialist = specialistUser
+        val petPhotoBytes = uiState.pet?.photoBytes
+        val specialist = uiState.specialistUser
 
         Column(
             modifier = Modifier
@@ -211,14 +207,12 @@ fun RequestDetailScreen(
                                     modifier = Modifier.padding(vertical = 8.dp),
                                     color = MaterialTheme.colorScheme.outlineVariant
                                 )
-
                                 Text(
                                     text = "Специалист",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
-
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp),
@@ -257,9 +251,7 @@ fun RequestDetailScreen(
                                                 }
                                             }
                                         }
-
                                         Spacer(modifier = Modifier.width(12.dp))
-
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = specialist.name.ifEmpty { specialist.email },
@@ -282,7 +274,6 @@ fun RequestDetailScreen(
                                                 )
                                             }
                                         }
-
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                             contentDescription = "Подробнее",
@@ -294,7 +285,6 @@ fun RequestDetailScreen(
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
             } else {
                 Surface(
@@ -323,7 +313,6 @@ fun RequestDetailScreen(
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = req.petName,
@@ -335,9 +324,7 @@ fun RequestDetailScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
                 Spacer(modifier = Modifier.height(24.dp))
-
                 SectionCard(title = "Информация о заявке") {
                     DetailRow("Создана", formatTimestamp(req.createdAt))
                     DetailRow(
@@ -345,9 +332,7 @@ fun RequestDetailScreen(
                         if (req.specialistUserId != null) "Принята специалистом" else "Ожидает специалиста"
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 if (req.specialistUserId != null && specialist != null) {
                     SectionCard(
                         title = "Специалист",
@@ -383,9 +368,7 @@ fun RequestDetailScreen(
                                     }
                                 }
                             }
-
                             Spacer(modifier = Modifier.width(12.dp))
-
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = specialist.name.ifEmpty { specialist.email },
@@ -408,7 +391,6 @@ fun RequestDetailScreen(
                                     )
                                 }
                             }
-
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Подробнее",
@@ -420,7 +402,7 @@ fun RequestDetailScreen(
                 }
             }
 
-            pet?.let { currentPet ->
+            uiState.pet?.let { currentPet ->
                 SectionCard(title = "Основная информация") {
                     DetailRow("Вид", currentPet.species)
                     currentPet.breed?.let { DetailRow("Порода", it) }
@@ -478,7 +460,7 @@ fun RequestDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            if (canAccept) {
+            if (uiState.canAccept) {
                 Button(
                     onClick = { viewModel.acceptRequest() },
                     modifier = Modifier.fillMaxWidth(),
@@ -491,14 +473,5 @@ fun RequestDetailScreen(
 
             Spacer(modifier = Modifier.weight(1f))
         }
-    }
-}
-
-private fun formatTimestamp(millis: Long): String {
-    return try {
-        val sdf = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
-        sdf.format(java.util.Date(millis))
-    } catch (e: Exception) {
-        millis.toString()
     }
 }
