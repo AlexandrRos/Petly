@@ -67,9 +67,8 @@ fun PetDetailScreen(
     viewModelFactory: ViewModelProvider.Factory
 ) {
     val viewModel: PetDetailViewModel = viewModel(factory = viewModelFactory)
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val pet by viewModel.pet.collectAsState()
-    val isCreating by viewModel.isCreatingRequest.collectAsState()
 
     val contentInsets = rememberContentInsets()
 
@@ -87,14 +86,14 @@ fun PetDetailScreen(
         contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
-                title = { Text(pet?.name ?: "", style = MaterialTheme.typography.headlineSmall) },
+                title = { Text(uiState.pet?.name ?: "", style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 actions = {
-                    pet?.let { currentPet ->
+                    uiState.pet?.let { currentPet ->
                         IconButton(onClick = { onEditClick(currentPet) }) {
                             Icon(Icons.Default.Edit, contentDescription = "Редактировать")
                         }
@@ -107,284 +106,317 @@ fun PetDetailScreen(
             )
         }
     ) { innerPadding ->
-        pet?.let { currentPet ->
-            if (isLandscape) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(120.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                if (currentPet.photoBytes != null) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(currentPet.photoBytes)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Фото питомца",
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.Pets,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = currentPet.name,
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = currentPet.species + if (currentPet.breed != null) " • ${currentPet.breed}" else "",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            SectionCard(title = "Основная информация") {
-                                DetailRow("Вид", currentPet.species)
-                                currentPet.breed?.let { DetailRow("Порода", it) }
-                                currentPet.age?.let { DetailRow("Возраст", "$it лет") }
-                                currentPet.weight?.let { DetailRow("Вес", "$it кг") }
-                                DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
-                                currentPet.sterilizationStatus?.let {
-                                    DetailRow("Стерилизация", if (it) "Да" else "Нет")
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    val healthItems = listOfNotNull(
-                        if (currentPet.vaccinations.isNotEmpty()) "Вакцинации" to currentPet.vaccinations else null,
-                        if (currentPet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to currentPet.chronicDiseases else null,
-                        if (currentPet.allergies.isNotEmpty()) "Аллергии" to currentPet.allergies else null,
-                        if (currentPet.medications.isNotEmpty()) "Принимаемые лекарства" to currentPet.medications else null
-                    )
-                    if (healthItems.isNotEmpty()) {
-                        SectionCard(title = "Здоровье") {
-                            healthItems.forEach { (label, items) ->
-                                DetailList(label, items)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    if (currentPet.personalityTraits.isNotEmpty()) {
-                        SectionCard(title = "Характер") {
-                            currentPet.personalityTraits.forEach { trait ->
-                                OutlinedAssistChip(text = trait)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    val scheduleItems = listOfNotNull(
-                        currentPet.feedingSchedule?.let { "Режим кормления" to it },
-                        currentPet.walkingSchedule?.let { "Расписание прогулок" to it }
-                    )
-                    if (scheduleItems.isNotEmpty()) {
-                        SectionCard(title = "Расписание") {
-                            scheduleItems.forEach { (label, value) ->
-                                DetailRow(label, value)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = {
-                            viewModel.createRequest(
-                                petId = currentPet.id,
-                                petName = currentPet.name,
-                                species = currentPet.species
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isCreating,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (isCreating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Загрузка…")
-                        } else {
-                            Text("Запросить помощь")
-                        }
-                    }
+                    CircularProgressIndicator()
                 }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            }
+
+            uiState.errorMessage != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        modifier = Modifier.size(120.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        if (currentPet.photoBytes != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(currentPet.photoBytes)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Фото питомца",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Pets,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = currentPet.name,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = currentPet.species + if (currentPet.breed != null) " • ${currentPet.breed}" else "",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    SectionCard(title = "Основная информация") {
-                        DetailRow("Вид", currentPet.species)
-                        currentPet.breed?.let { DetailRow("Порода", it) }
-                        currentPet.age?.let { DetailRow("Возраст", "$it лет") }
-                        currentPet.weight?.let { DetailRow("Вес", "$it кг") }
-                        DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
-                        currentPet.sterilizationStatus?.let {
-                            DetailRow("Стерилизация", if (it) "Да" else "Нет")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val healthItemsPortrait = listOfNotNull(
-                        if (currentPet.vaccinations.isNotEmpty()) "Вакцинации" to currentPet.vaccinations else null,
-                        if (currentPet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to currentPet.chronicDiseases else null,
-                        if (currentPet.allergies.isNotEmpty()) "Аллергии" to currentPet.allergies else null,
-                        if (currentPet.medications.isNotEmpty()) "Принимаемые лекарства" to currentPet.medications else null
-                    )
-                    if (healthItemsPortrait.isNotEmpty()) {
-                        SectionCard(title = "Здоровье") {
-                            healthItemsPortrait.forEach { (label, items) ->
-                                DetailList(label, items)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    if (currentPet.personalityTraits.isNotEmpty()) {
-                        SectionCard(title = "Характер") {
-                            currentPet.personalityTraits.forEach { trait ->
-                                OutlinedAssistChip(text = trait)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    val scheduleItemsPortrait = listOfNotNull(
-                        currentPet.feedingSchedule?.let { "Режим кормления" to it },
-                        currentPet.walkingSchedule?.let { "Расписание прогулок" to it }
-                    )
-                    if (scheduleItemsPortrait.isNotEmpty()) {
-                        SectionCard(title = "Расписание") {
-                            scheduleItemsPortrait.forEach { (label, value) ->
-                                DetailRow(label, value)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = {
-                            viewModel.createRequest(
-                                petId = currentPet.id,
-                                petName = currentPet.name,
-                                species = currentPet.species
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isCreating,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (isCreating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Загрузка…")
-                        } else {
-                            Text("Запросить помощь")
-                        }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = uiState.errorMessage ?: "Неизвестная ошибка",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Пожалуйста, попробуйте позже",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
-        } ?: run {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
+
+            uiState.pet != null -> {
+                val currentPet = uiState.pet!!
+
+                if (isLandscape) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Max),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(120.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    if (currentPet.photoBytes != null) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(currentPet.photoBytes)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Фото питомца",
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Pets,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(64.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = currentPet.name,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = currentPet.species + if (currentPet.breed != null) " • ${currentPet.breed}" else "",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                SectionCard(title = "Основная информация") {
+                                    DetailRow("Вид", currentPet.species)
+                                    currentPet.breed?.let { DetailRow("Порода", it) }
+                                    currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                                    currentPet.weight?.let { DetailRow("Вес", "$it кг") }
+                                    DetailRow(
+                                        "Пол",
+                                        if (currentPet.isMale) "Мужской" else "Женский"
+                                    )
+                                    currentPet.sterilizationStatus?.let {
+                                        DetailRow("Стерилизация", if (it) "Да" else "Нет")
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        val healthItems = listOfNotNull(
+                            if (currentPet.vaccinations.isNotEmpty()) "Вакцинации" to currentPet.vaccinations else null,
+                            if (currentPet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to currentPet.chronicDiseases else null,
+                            if (currentPet.allergies.isNotEmpty()) "Аллергии" to currentPet.allergies else null,
+                            if (currentPet.medications.isNotEmpty()) "Принимаемые лекарства" to currentPet.medications else null
+                        )
+                        if (healthItems.isNotEmpty()) {
+                            SectionCard(title = "Здоровье") {
+                                healthItems.forEach { (label, items) ->
+                                    DetailList(label, items)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        if (currentPet.personalityTraits.isNotEmpty()) {
+                            SectionCard(title = "Характер") {
+                                currentPet.personalityTraits.forEach { trait ->
+                                    OutlinedAssistChip(text = trait)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        val scheduleItems = listOfNotNull(
+                            currentPet.feedingSchedule?.let { "Режим кормления" to it },
+                            currentPet.walkingSchedule?.let { "Расписание прогулок" to it }
+                        )
+                        if (scheduleItems.isNotEmpty()) {
+                            SectionCard(title = "Расписание") {
+                                scheduleItems.forEach { (label, value) ->
+                                    DetailRow(label, value)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Button(
+                            onClick = {
+                                viewModel.createRequest(
+                                    petId = currentPet.id,
+                                    petName = currentPet.name,
+                                    species = currentPet.species
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isCreating,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (uiState.isCreating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Загрузка…")
+                            } else {
+                                Text("Запросить помощь")
+                            }
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(120.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            if (currentPet.photoBytes != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(currentPet.photoBytes)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото питомца",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Pets,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = currentPet.name,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = currentPet.species + if (currentPet.breed != null) " • ${currentPet.breed}" else "",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        SectionCard(title = "Основная информация") {
+                            DetailRow("Вид", currentPet.species)
+                            currentPet.breed?.let { DetailRow("Порода", it) }
+                            currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                            currentPet.weight?.let { DetailRow("Вес", "$it кг") }
+                            DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
+                            currentPet.sterilizationStatus?.let {
+                                DetailRow("Стерилизация", if (it) "Да" else "Нет")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val healthItemsPortrait = listOfNotNull(
+                            if (currentPet.vaccinations.isNotEmpty()) "Вакцинации" to currentPet.vaccinations else null,
+                            if (currentPet.chronicDiseases.isNotEmpty()) "Хронические заболевания" to currentPet.chronicDiseases else null,
+                            if (currentPet.allergies.isNotEmpty()) "Аллергии" to currentPet.allergies else null,
+                            if (currentPet.medications.isNotEmpty()) "Принимаемые лекарства" to currentPet.medications else null
+                        )
+                        if (healthItemsPortrait.isNotEmpty()) {
+                            SectionCard(title = "Здоровье") {
+                                healthItemsPortrait.forEach { (label, items) ->
+                                    DetailList(label, items)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        if (currentPet.personalityTraits.isNotEmpty()) {
+                            SectionCard(title = "Характер") {
+                                currentPet.personalityTraits.forEach { trait ->
+                                    OutlinedAssistChip(text = trait)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        val scheduleItemsPortrait = listOfNotNull(
+                            currentPet.feedingSchedule?.let { "Режим кормления" to it },
+                            currentPet.walkingSchedule?.let { "Расписание прогулок" to it }
+                        )
+                        if (scheduleItemsPortrait.isNotEmpty()) {
+                            SectionCard(title = "Расписание") {
+                                scheduleItemsPortrait.forEach { (label, value) ->
+                                    DetailRow(label, value)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                viewModel.createRequest(
+                                    petId = currentPet.id,
+                                    petName = currentPet.name,
+                                    species = currentPet.species
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isCreating,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (uiState.isCreating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Загрузка…")
+                            } else {
+                                Text("Запросить помощь")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

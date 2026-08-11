@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -33,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -47,10 +50,12 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetsScreen(
-    pets: List<Pet>,
+    viewModel: PetsViewModel,
     onPetClick: (Pet) -> Unit,
     onAddClick: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     val contentInsets = rememberContentInsets()
 
     Scaffold(
@@ -74,20 +79,66 @@ fun PetsScreen(
         },
         contentWindowInsets = contentInsets
     ) { innerPadding ->
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(pets, key = { it.id }) { pet ->
-                PetCard(pet = pet, onClick = { onPetClick(pet) })
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            uiState.errorMessage != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = uiState.errorMessage ?: "Неизвестная ошибка",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Пожалуйста, попробуйте позже",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                if (uiState.pets.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "У вас пока нет питомцев",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.pets, key = { it.id }) { pet ->
+                            PetCard(pet = pet, onClick = { onPetClick(pet) })
+                        }
+                    }
+                }
             }
         }
     }
 }
-
 @Composable
 private fun PetCard(pet: Pet, onClick: () -> Unit) {
     ElevatedCard(

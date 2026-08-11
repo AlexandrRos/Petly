@@ -71,7 +71,6 @@ fun MainScreen(
     val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
     val petsViewModel: PetsViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
-    val pets by petsViewModel.pets.collectAsState()
     val currentUser by profileViewModel.currentUser.collectAsState()
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
@@ -155,7 +154,7 @@ fun MainScreen(
 
                 composable(Screen.Pets.route) {
                     PetsScreen(
-                        pets = pets,
+                        viewModel = petsViewModel,
                         onPetClick = { pet ->
                             nestedNavController.navigate(Screen.PetDetail.createRoute(pet.id))
                         },
