@@ -49,13 +49,9 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @Composable
 fun RequestsScreen(
     requestsViewModel: RequestsViewModel,
-    isSpecialist: Boolean,
     onRequestClick: (requestId: String) -> Unit
 ) {
-    val requests by requestsViewModel.requests.collectAsState()
-    val showMyRequests by requestsViewModel.showMyRequests.collectAsState()
-    val photoCache by requestsViewModel.photoCache.collectAsState()
-
+    val uiState by requestsViewModel.uiState.collectAsState()
     val contentInsets = rememberContentInsets()
 
     Scaffold(
@@ -63,10 +59,10 @@ fun RequestsScreen(
             TopAppBar(
                 title = { Text("Заявки", style = MaterialTheme.typography.headlineSmall) },
                 actions = {
-                    if (isSpecialist) {
+                    if (uiState.isSpecialist) {
                         TextButton(onClick = { requestsViewModel.toggleView() }) {
                             Text(
-                                text = if (showMyRequests) "Мои заявки" else "Все заявки",
+                                text = if (uiState.showMyRequests) "Мои заявки" else "Все заявки",
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -80,7 +76,7 @@ fun RequestsScreen(
         },
         contentWindowInsets = contentInsets
     ) { innerPadding ->
-        if (requests.isEmpty()) {
+        if (uiState.requests.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -88,7 +84,7 @@ fun RequestsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (!isSpecialist || showMyRequests) "У вас пока нет заявок"
+                    text = if (!uiState.isSpecialist || uiState.showMyRequests) "У вас пока нет заявок"
                     else "Нет заявок от других пользователей",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -102,10 +98,10 @@ fun RequestsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(requests, key = { it.id }) { request ->
+                items(uiState.requests, key = { it.id }) { request ->
                     RequestCard(
                         request = request,
-                        photoBytes = photoCache[request.id],
+                        photoBytes = uiState.photoCache[request.id],
                         onClick = { onRequestClick(request.id) }
                     )
                 }

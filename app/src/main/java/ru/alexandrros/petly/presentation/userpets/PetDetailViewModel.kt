@@ -9,11 +9,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.model.Request
@@ -29,36 +31,47 @@ class PetDetailViewModel(
     private val checkExistingRequest: CheckExistingRequestUseCase,
     private val createRequest: CreateRequestUseCase
 ) : ViewModel() {
+    private val _uiState = MutableStateFlow(PetDetailUiState())
+    val uiState: StateFlow<PetDetailUiState> = _uiState.asStateFlow()
 
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
-
-    private val _isCreatingRequest = MutableStateFlow(false)
-    val isCreatingRequest: StateFlow<Boolean> = _isCreatingRequest
 
     private val currentUserId: StateFlow<String?> = observeCurrentUser()
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val pet: StateFlow<Pet?> = currentUserId
+    private val petFlow: StateFlow<Pet?> = currentUserId
         .flatMapLatest { uid ->
-            if (uid != null) observePetByUser(uid, petId)   // <-- real‑time flow
+            if (uid != null) observePetByUser(uid, petId)
             else flowOf(null)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    init {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            petFlow.collect { pet ->
+                _uiState.update { state ->
+                    state.copy(isLoading = false, pet = pet)
+                }
+            }
+        }
+    }
+
     fun createRequest(petId: String, petName: String, species: String) {
         viewModelScope.launch {
-            _isCreatingRequest.value = true
+            _uiState.update { it.copy(isCreating = true) }
             val uid = currentUserId.first { it != null } ?: run {
                 _snackbarEvent.emit("Ошибка: не удалось получить пользователя")
-                _isCreatingRequest.value = false
+                _uiState.update { it.copy(isCreating = false) }
                 return@launch
             }
             val alreadyExists = checkExistingRequest(uid, petId)
             if (alreadyExists) {
                 _snackbarEvent.emit("Заявка для этого питомца уже создана")
-                _isCreatingRequest.value = false
+                _uiState.update { it.copy(isCreating = false) }
                 return@launch
             }
             createRequest(
@@ -73,7 +86,7 @@ class PetDetailViewModel(
             }.onFailure { e ->
                 _snackbarEvent.emit("Ошибка при создании заявки: ${e.localizedMessage}")
             }
-            _isCreatingRequest.value = false
+            _uiState.update { it.copy(isCreating = false) }
         }
     }
 

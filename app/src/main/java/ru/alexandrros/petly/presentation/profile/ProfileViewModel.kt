@@ -1,8 +1,6 @@
 package ru.alexandrros.petly.presentation.profile
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -12,18 +10,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.usecase.LogoutUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateSpecialistUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserPhotoUseCase
-import java.io.ByteArrayOutputStream
+import ru.alexandrros.petly.presentation.common.readAndCompressImage
 
 class ProfileViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
@@ -32,14 +28,19 @@ class ProfileViewModel(
     private val updateUserPhoto: UpdateUserPhotoUseCase
 ) : ViewModel() {
 
-    val currentUser: StateFlow<User?> = observeCurrentUser()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    private val _isUpdatingPhoto = MutableStateFlow(false)
-    val isUpdatingPhoto: StateFlow<Boolean> = _isUpdatingPhoto
+    private val _uiState = MutableStateFlow(ProfileUiState())
+    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
+
+    init {
+        viewModelScope.launch {
+            observeCurrentUser().collect { user ->
+                _uiState.update { it.copy(isLoading = false, currentUser = user) }
+            }
+        }
+    }
 
     fun logout() {
         viewModelScope.launch {
@@ -49,7 +50,7 @@ class ProfileViewModel(
 
     fun setSpecialist(isSpecialist: Boolean) {
         viewModelScope.launch {
-            val user = currentUser.first() ?: return@launch
+            val user = _uiState.value.currentUser ?: return@launch
             val newSpecialist = if (isSpecialist) "Vet" else "None"
             updateSpecialist(user.uid, newSpecialist)
                 .onFailure { e ->
@@ -60,20 +61,17 @@ class ProfileViewModel(
 
     fun updateProfilePhoto(imageUri: Uri, context: Context) {
         viewModelScope.launch {
-            _isUpdatingPhoto.value = true
+            _uiState.update { it.copy(isUpdatingPhoto = true) }
             try {
-                //Read and compress image on background thread
                 val bytes = withContext(Dispatchers.IO) {
-                    readBytesFromUri(context, imageUri)?.let {
-                        compressImage(it, maxSizeBytes = 100 * 1024)   // target ~100 KB
-                    }
+                    readAndCompressImage(context, imageUri, maxSizeBytes = 100 * 1024)
                 }
                 if (bytes == null || bytes.isEmpty()) {
                     _snackbarEvent.emit("Не удалось обработать изображение")
                     return@launch
                 }
 
-                val user = currentUser.first() ?: run {
+                val user = _uiState.value.currentUser ?: run {
                     _snackbarEvent.emit("Пользователь не авторизован")
                     return@launch
                 }
@@ -90,46 +88,9 @@ class ProfileViewModel(
                 _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
                 Log.e("ProfileViewModel", "Error updating photo", e)
             } finally {
-                _isUpdatingPhoto.value = false
+                _uiState.update { it.copy(isUpdatingPhoto = false) }
             }
         }
-    }
-
-    private fun readBytesFromUri(context: Context, uri: Uri): ByteArray? {
-        return try {
-            // Attempt to read raw bytes first
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val rawBytes = stream.readBytes()
-                if (rawBytes.isNotEmpty()) return@use rawBytes
-            }
-
-            // If raw bytes failed, decode as bitmap and compress
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val bitmap = BitmapFactory.decodeStream(stream)
-                if (bitmap != null) {
-                    val baos = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos)
-                    val compressed = baos.toByteArray()
-                    bitmap.recycle()
-                    return compressed
-                }
-            }
-            null
-        } catch (e: Exception) {
-            Log.e("ProfileViewModel", "Failed to read image from URI", e)
-            null
-        }
-    }
-
-
-    private fun compressImage(bytes: ByteArray, maxSizeBytes: Int): ByteArray {
-        if (bytes.size <= maxSizeBytes) return bytes
-        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return bytes
-        val quality = 50 // aggressive compression
-        val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)
-        bitmap.recycle()
-        return baos.toByteArray()
     }
 
     class Factory(

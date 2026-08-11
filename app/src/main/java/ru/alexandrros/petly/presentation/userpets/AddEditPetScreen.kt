@@ -1,10 +1,6 @@
 package ru.alexandrros.petly.presentation.userpets
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -56,7 +52,7 @@ import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
-import java.io.ByteArrayOutputStream
+import ru.alexandrros.petly.presentation.common.readAndCompressImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +85,7 @@ fun AddEditPetScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val bytes = readAndCompressPhoto(context, it, maxSizeKB = 100)
+            val bytes = readAndCompressImage(context, it, maxSizeBytes = 100 * 1024)
             photoBytes = bytes
         }
     }
@@ -344,29 +340,4 @@ fun AddEditPetScreen(
             }
         }
     }
-}
-
-private fun readAndCompressPhoto(context: Context, uri: Uri, maxSizeKB: Int): ByteArray? {
-    return try {
-        val rawBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-        rawBytes?.let { compressBytes(it, maxSizeKB * 1024) }
-    } catch (e: Exception) {
-        Log.e("AddEditPet", "Failed to read/compress image", e)
-        null
-    }
-}
-
-private fun compressBytes(bytes: ByteArray, maxSizeBytes: Int): ByteArray {
-    if (bytes.size <= maxSizeBytes) return bytes
-    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return bytes
-    var quality = 80
-    var output: ByteArray
-    do {
-        val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)
-        output = baos.toByteArray()
-        quality -= 10
-    } while (output.size > maxSizeBytes && quality > 10)
-    bitmap.recycle()
-    return output
 }

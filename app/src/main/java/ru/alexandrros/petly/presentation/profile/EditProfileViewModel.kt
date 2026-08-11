@@ -3,9 +3,13 @@ package ru.alexandrros.petly.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserProfileUseCase
 
@@ -14,14 +18,8 @@ class EditProfileViewModel(
     private val updateUserProfile: UpdateUserProfileUseCase
 ) : ViewModel() {
 
-    private val _currentUser = MutableStateFlow<User?>(null)
-    val currentUser: StateFlow<User?> = _currentUser
-
-    private val _name = MutableStateFlow("")
-    val name: StateFlow<String> = _name
-
-    private val _isSaving = MutableStateFlow(false)
-    val isSaving: StateFlow<Boolean> = _isSaving
+    private val _uiState = MutableStateFlow(EditProfileUiState())
+    val uiState: StateFlow<EditProfileUiState> = _uiState.asStateFlow()
 
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
@@ -29,23 +27,31 @@ class EditProfileViewModel(
     init {
         viewModelScope.launch {
             observeCurrentUser().collect { user ->
-                _currentUser.value = user
-                user?.let {
-                    if (_name.value.isBlank() && it.name.isNotBlank()) {
-                        _name.value = it.name
+                _uiState.update { state ->
+                    val newName = if (state.name.isBlank() && user?.name?.isNotBlank() == true) {
+                        user.name
+                    } else {
+                        state.name
                     }
+                    state.copy(
+                        isLoading = false,
+                        currentUser = user,
+                        name = newName
+                    )
                 }
             }
         }
     }
 
     fun onNameChanged(newName: String) {
-        _name.value = newName
+        _uiState.update { it.copy(name = newName) }
     }
 
     fun saveProfile() {
-        val user = _currentUser.value ?: return
-        val newName = _name.value.trim()
+        val currentState = _uiState.value
+        val user = currentState.currentUser ?: return
+        val newName = currentState.name.trim()
+
         if (newName.isBlank() || newName == user.name) {
             viewModelScope.launch {
                 _snackbarEvent.emit("Имя не изменилось или пустое")
@@ -54,7 +60,7 @@ class EditProfileViewModel(
         }
 
         viewModelScope.launch {
-            _isSaving.value = true
+            _uiState.update { it.copy(isSaving = true) }
             updateUserProfile(user.uid, newName)
                 .onSuccess {
                     _snackbarEvent.emit("Профиль обновлён")
@@ -62,7 +68,7 @@ class EditProfileViewModel(
                 .onFailure { e ->
                     _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
                 }
-            _isSaving.value = false
+            _uiState.update { it.copy(isSaving = false) }
         }
     }
 

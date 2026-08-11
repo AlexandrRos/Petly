@@ -20,8 +20,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,16 +42,16 @@ import ru.alexandrros.petly.presentation.profile.ProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
-import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
+import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistDetailScreen
 import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
-import ru.alexandrros.petly.presentation.userpets.PetsViewModel
 import ru.alexandrros.petly.presentation.userpets.PetsScreen
+import ru.alexandrros.petly.presentation.userpets.PetsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,8 +69,6 @@ fun MainScreen(
     val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
     val petsViewModel: PetsViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
-    val pets by petsViewModel.pets.collectAsState()
-    val currentUser by profileViewModel.currentUser.collectAsState()
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
         TabInfo(Screen.Requests, "Заявки", Icons.Filled.Newspaper),
@@ -155,7 +151,7 @@ fun MainScreen(
 
                 composable(Screen.Pets.route) {
                     PetsScreen(
-                        pets = pets,
+                        viewModel = petsViewModel,
                         onPetClick = { pet ->
                             nestedNavController.navigate(Screen.PetDetail.createRoute(pet.id))
                         },
@@ -164,18 +160,11 @@ fun MainScreen(
                 }
 
                 composable(Screen.Requests.route) {
-                    val isSpecialist =
-                        currentUser?.specialist != null && currentUser?.specialist != "None"
                     val requestsViewModel: RequestsViewModel =
                         viewModel(factory = requestViewModelFactory)
 
-                    LaunchedEffect(isSpecialist) {
-                        requestsViewModel.setSpecialist(isSpecialist)
-                    }
-
                     RequestsScreen(
                         requestsViewModel = requestsViewModel,
-                        isSpecialist = isSpecialist,
                         onRequestClick = { requestId ->
                             nestedNavController.navigate(Screen.RequestDetail.createRoute(requestId))
                         }
