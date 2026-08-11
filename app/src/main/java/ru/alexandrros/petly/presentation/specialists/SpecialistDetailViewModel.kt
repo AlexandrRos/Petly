@@ -5,24 +5,30 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.usecase.GetUserByIdUseCase
 
 class SpecialistDetailViewModel(
-    specialistId: String,
+    private val specialistId: String,
     private val getUserById: GetUserByIdUseCase
 ) : ViewModel() {
 
-    private val _specialist = MutableStateFlow<User?>(null)
-    val specialist: StateFlow<User?> = _specialist
+    private val _uiState = MutableStateFlow(SpecialistDetailUiState())
+    val uiState: StateFlow<SpecialistDetailUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
+            _uiState.value = SpecialistDetailUiState(isLoading = true)
             getUserById(specialistId)
-                .catch { _specialist.value = null }
-                .collect { _specialist.value = it }
+                .catch { e ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.localizedMessage) }
+                }
+                .collect { user ->
+                    _uiState.update { it.copy(isLoading = false, user = user, errorMessage = null) }
+                }
         }
     }
 
