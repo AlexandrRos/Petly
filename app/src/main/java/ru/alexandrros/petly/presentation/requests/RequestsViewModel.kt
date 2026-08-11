@@ -22,6 +22,7 @@ import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestsByCreatorUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class RequestsViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
@@ -39,22 +40,26 @@ class RequestsViewModel(
     init {
         // Reactively load requests
         viewModelScope.launch {
+            // Combine current user (for both uid and specialist status)
+            // with toggle flags from the UI state
             combine(
-                observeCurrentUser().map { it?.uid },
-                _uiState.map { it.showMyRequests }.distinctUntilChanged(),
-                _uiState.map { it.isSpecialist }.distinctUntilChanged()
-            ) { userId, showMyRequests, isSpecialist ->
-                Triple(userId, showMyRequests, isSpecialist)
+                observeCurrentUser().map { it?.uid to it?.specialist },
+                _uiState.map { it.showMyRequests }.distinctUntilChanged()
+            ) { (uid, specialist), showMyRequests ->
+                Triple(uid, specialist, showMyRequests)
             }
-                .flatMapLatest { (userId, myRequests, specialist) ->
-                    if (userId == null) {
+                .flatMapLatest { (uid, specialist, showMyRequests) ->
+                    _uiState.update { it.copy(currentUserSpecialist = specialist) }
+
+                    if (uid == null) {
                         flowOf(emptyList())
                     } else {
-                        if (!specialist) {
-                            getRequestsByCreator(userId)
+                        val isSpec = specialist != null && specialist != "None"
+                        if (!isSpec) {
+                            getRequestsByCreator(uid)
                         } else {
-                            if (myRequests) {
-                                getRequestsByCreator(userId)
+                            if (showMyRequests) {
+                                getRequestsByCreator(uid)
                             } else {
                                 getAllRequests()
                             }
@@ -96,10 +101,6 @@ class RequestsViewModel(
         _uiState.update { it.copy(showMyRequests = !it.showMyRequests) }
     }
 
-    fun setSpecialist(isSpecialist: Boolean) {
-        _uiState.update { it.copy(isSpecialist = isSpecialist) }
-    }
-
     class Factory(
         private val observeCurrentUser: ObserveCurrentUserUseCase,
         private val getRequestsByCreator: GetRequestsByCreatorUseCase,
@@ -119,4 +120,5 @@ class RequestsViewModel(
             throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
+
 }

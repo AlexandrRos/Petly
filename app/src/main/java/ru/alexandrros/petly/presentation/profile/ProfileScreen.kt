@@ -68,8 +68,7 @@ fun ProfileScreen(
     onSpecialistToggle: (Boolean) -> Unit,
     onEditProfile: () -> Unit = {}
 ) {
-    val user by profileViewModel.currentUser.collectAsState()
-    val isUpdatingPhoto by profileViewModel.isUpdatingPhoto.collectAsState()
+    val uiState by profileViewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val contentInsets = rememberContentInsets()
@@ -108,210 +107,236 @@ fun ProfileScreen(
             )
         }
     ) { innerPadding ->
-        if (user == null) {
-            Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        when {
+            uiState.isLoading -> {
+                Box(
+                    Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Загрузка данных…", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-        } else {
-            val currentUser = user!!
-            val isSpecialist = currentUser.specialist != null && currentUser.specialist != "None"
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (isLandscape) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+            uiState.currentUser != null -> {
+                val currentUser = uiState.currentUser!!
+                val isSpecialist =
+                    currentUser.specialist != null && currentUser.specialist != "None"
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (isLandscape) {
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Max),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Box(
-                                contentAlignment = Alignment.BottomEnd,
-                                modifier = Modifier.size(120.dp)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             ) {
-                                if (currentUser.photoBytes != null) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(currentUser.photoBytes)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Фото профиля",
+                                Box(
+                                    contentAlignment = Alignment.BottomEnd,
+                                    modifier = Modifier.size(120.dp)
+                                ) {
+                                    if (currentUser.photoBytes != null) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(currentUser.photoBytes)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Фото профиля",
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Surface(
+                                            modifier = Modifier.fillMaxSize(),
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    modifier = Modifier.size(64.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    IconButton(
+                                        onClick = { launcher.launch("image/*") },
+                                        enabled = !uiState.isUpdatingPhoto,
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Surface(
-                                        modifier = Modifier.fillMaxSize(),
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primaryContainer
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.secondaryContainer)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
+                                        if (uiState.isUpdatingPhoto) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
                                             Icon(
-                                                imageVector = Icons.Default.Person,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.size(64.dp)
+                                                imageVector = Icons.Default.CameraAlt,
+                                                contentDescription = "Сменить фото",
+                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                         }
                                     }
                                 }
 
-                                IconButton(
-                                    onClick = { launcher.launch("image/*") },
-                                    enabled = !isUpdatingPhoto,
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = currentUser.name.ifEmpty { "Не указано" },
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = currentUser.email,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                SectionCard(title = "Основная информация") {
+                                    DetailRow("Имя", currentUser.name.ifEmpty { "Не указано" })
+                                    DetailRow("Email", currentUser.email)
+                                    DetailRow("UID", currentUser.uid)
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                    } else {
+                        Box(
+                            contentAlignment = Alignment.BottomEnd,
+                            modifier = Modifier.size(120.dp)
+                        ) {
+                            if (currentUser.photoBytes != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(currentUser.photoBytes)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Фото профиля",
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
                                 ) {
-                                    if (isUpdatingPhoto) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
+                                    Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            imageVector = Icons.Default.CameraAlt,
-                                            contentDescription = "Сменить фото",
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.size(18.dp)
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(64.dp)
                                         )
                                     }
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = currentUser.name.ifEmpty { "Не указано" },
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = currentUser.email,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            SectionCard(title = "Основная информация") {
-                                DetailRow("Имя", currentUser.name.ifEmpty { "Не указано" })
-                                DetailRow("Email", currentUser.email)
-                                DetailRow("UID", currentUser.uid)
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-                } else {
-                    Box(
-                        contentAlignment = Alignment.BottomEnd,
-                        modifier = Modifier.size(120.dp)
-                    ) {
-                        if (currentUser.photoBytes != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(currentUser.photoBytes)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Фото профиля",
+                            IconButton(
+                                onClick = { launcher.launch("image/*") },
+                                enabled = !uiState.isUpdatingPhoto,
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
+                                if (uiState.isUpdatingPhoto) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
                                     Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(64.dp)
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Сменить фото",
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }
                         }
 
-                        IconButton(
-                            onClick = { launcher.launch("image/*") },
-                            enabled = !isUpdatingPhoto,
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                        ) {
-                            if (isUpdatingPhoto) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    strokeWidth = 2.dp
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = currentUser.name.ifEmpty { "Не указано" },
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = currentUser.email,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        SectionCard(title = "Основная информация") {
+                            DetailRow("Имя", currentUser.name.ifEmpty { "Не указано" })
+                            DetailRow("Email", currentUser.email)
+                            DetailRow("UID", currentUser.uid)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        SectionCard(title = "Статус") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Статус специалиста: ${
+                                        if (isSpecialist) "Ветеринар" else "Нет"
+                                    }",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
                                 )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = "Сменить фото",
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(18.dp)
+                                Switch(
+                                    checked = isSpecialist,
+                                    onCheckedChange = onSpecialistToggle
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = currentUser.name.ifEmpty { "Не указано" },
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = currentUser.email,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    SectionCard(title = "Основная информация") {
-                        DetailRow("Имя", currentUser.name.ifEmpty { "Не указано" })
-                        DetailRow("Email", currentUser.email)
-                        DetailRow("UID", currentUser.uid)
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
 
                     SectionCard(title = "Статус") {
                         Row(
@@ -333,40 +358,18 @@ fun ProfileScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                SectionCard(title = "Статус") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                    Button(
+                        onClick = onLogout,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
                     ) {
-                        Text(
-                            text = "Статус специалиста: ${
-                                if (isSpecialist) "Ветеринар" else "Нет"
-                            }",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = isSpecialist,
-                            onCheckedChange = onSpecialistToggle
-                        )
+                        Text("Выйти")
                     }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onLogout,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Выйти")
                 }
             }
         }

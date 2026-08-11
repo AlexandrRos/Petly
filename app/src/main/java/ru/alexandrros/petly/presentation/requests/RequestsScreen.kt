@@ -32,7 +32,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -50,22 +49,17 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @Composable
 fun RequestsScreen(
     requestsViewModel: RequestsViewModel,
-    isSpecialist: Boolean,
     onRequestClick: (requestId: String) -> Unit
 ) {
     val uiState by requestsViewModel.uiState.collectAsState()
     val contentInsets = rememberContentInsets()
-
-    LaunchedEffect(isSpecialist) {
-        requestsViewModel.setSpecialist(isSpecialist)
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Заявки", style = MaterialTheme.typography.headlineSmall) },
                 actions = {
-                    if (isSpecialist) {
+                    if (uiState.isSpecialist) {
                         TextButton(onClick = { requestsViewModel.toggleView() }) {
                             Text(
                                 text = if (uiState.showMyRequests) "Мои заявки" else "Все заявки",
@@ -90,7 +84,7 @@ fun RequestsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (!isSpecialist || uiState.showMyRequests) "У вас пока нет заявок"
+                    text = if (!uiState.isSpecialist || uiState.showMyRequests) "У вас пока нет заявок"
                     else "Нет заявок от других пользователей",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
