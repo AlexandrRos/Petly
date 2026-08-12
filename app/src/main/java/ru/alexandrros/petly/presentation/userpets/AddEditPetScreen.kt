@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,58 +37,43 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
-import ru.alexandrros.petly.presentation.common.readAndCompressImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPetScreen(
-    pet: Pet?,
-    onSave: (Pet) -> Unit,
-    onCancel: () -> Unit
+    viewModelFactory: ViewModelProvider.Factory,
+    onNavigateBack: () -> Unit
 ) {
-    var name by remember { mutableStateOf(pet?.name ?: "") }
-    var species by remember { mutableStateOf(pet?.species ?: "") }
-    var breed by remember { mutableStateOf(pet?.breed ?: "") }
-    var age by remember { mutableStateOf(pet?.age?.toString() ?: "") }
-    var weight by remember { mutableStateOf(pet?.weight?.toString() ?: "") }
-    var isMale by remember { mutableStateOf(pet?.isMale ?: true) }
-    var sterilizationStatus by remember { mutableStateOf(pet?.sterilizationStatus ?: false) }
-
-    var vaccinationsText by remember { mutableStateOf(pet?.vaccinations?.joinToString(", ") ?: "") }
-    var chronicDiseasesText by remember { mutableStateOf(pet?.chronicDiseases?.joinToString(", ") ?: "") }
-    var allergiesText by remember { mutableStateOf(pet?.allergies?.joinToString(", ") ?: "") }
-    var personalityTraitsText by remember { mutableStateOf(pet?.personalityTraits?.joinToString(", ") ?: "") }
-    var medicationsText by remember { mutableStateOf(pet?.medications?.joinToString(", ") ?: "") }
-
-    var feedingSchedule by remember { mutableStateOf(pet?.feedingSchedule ?: "") }
-    var walkingSchedule by remember { mutableStateOf(pet?.walkingSchedule ?: "") }
-
-    var photoBytes by remember { mutableStateOf(pet?.photoBytes) }
-
+    val viewModel: AddEditPetViewModel = viewModel(factory = viewModelFactory)
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.saveSuccessEvent.collect {
+            onNavigateBack()
+        }
+    }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            val bytes = readAndCompressImage(context, it, maxSizeBytes = 100 * 1024)
-            photoBytes = bytes
-        }
+        uri?.let { viewModel.updatePhoto(it, context) }
     }
 
     val contentInsets = rememberContentInsets()
@@ -98,39 +84,26 @@ fun AddEditPetScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (pet == null) "Добавить питомца" else "Редактировать",
+                        if (viewModel.isNew) "Добавить питомца" else "Редактировать",
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onCancel) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Отмена")
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        val newPet = Pet(
-                            id = pet?.id ?: "",
-                            userId = pet?.userId ?: "",
-                            name = name,
-                            species = species,
-                            breed = breed.ifBlank { null },
-                            age = age.toIntOrNull(),
-                            weight = weight.toDoubleOrNull(),
-                            isMale = isMale,
-                            sterilizationStatus = sterilizationStatus,
-                            vaccinations = vaccinationsText.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                            chronicDiseases = chronicDiseasesText.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                            allergies = allergiesText.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                            personalityTraits = personalityTraitsText.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                            feedingSchedule = feedingSchedule.ifBlank { null },
-                            walkingSchedule = walkingSchedule.ifBlank { null },
-                            medications = medicationsText.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                            photoBytes = photoBytes
-                        )
-                        onSave(newPet)
-                    }) {
-                        Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                    IconButton(onClick = { viewModel.savePet() }) {
+                        if (uiState.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -154,10 +127,10 @@ fun AddEditPetScreen(
                     .size(120.dp)
                     .align(Alignment.CenterHorizontally)
             ) {
-                if (photoBytes != null) {
+                if (uiState.photoBytes != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(photoBytes)
+                            .data(uiState.photoBytes)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Фото питомца",
@@ -199,9 +172,9 @@ fun AddEditPetScreen(
                 }
             }
 
-            if (photoBytes != null) {
+            if (uiState.photoBytes != null) {
                 TextButton(
-                    onClick = { photoBytes = null },
+                    onClick = { viewModel.updateState { it.copy(photoBytes = null) } },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text("Удалить фото")
@@ -210,63 +183,59 @@ fun AddEditPetScreen(
 
             SectionCard(title = "Основная информация") {
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
+                    value = uiState.name,
+                    onValueChange = { viewModel.updateState { state -> state.copy(name = it) } },
                     label = { Text("Имя") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = species,
-                    onValueChange = { species = it },
+                    value = uiState.species,
+                    onValueChange = { viewModel.updateState { state -> state.copy(species = it) } },
                     label = { Text("Вид") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = breed,
-                    onValueChange = { breed = it },
+                    value = uiState.breed,
+                    onValueChange = { viewModel.updateState { state -> state.copy(breed = it) } },
                     label = { Text("Порода (необязательно)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = age,
-                    onValueChange = { age = it },
+                    value = uiState.ageText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(ageText = it) } },
                     label = { Text("Возраст (лет)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = weight,
-                    onValueChange = { weight = it },
+                    value = uiState.weightText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(weightText = it) } },
                     label = { Text("Вес (кг)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = "Пол",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Пол", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedFilterChip(
-                        selected = isMale,
-                        onClick = { isMale = true },
-                        text ="Мужской"
+                        selected = uiState.isMale,
+                        onClick = { viewModel.updateState { it.copy(isMale = true) } },
+                        text = "Мужской"
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     OutlinedFilterChip(
-                        selected = !isMale,
-                        onClick = { isMale = false },
-                        text ="Женский"
+                        selected = !uiState.isMale,
+                        onClick = { viewModel.updateState { it.copy(isMale = false) } },
+                        text = "Женский"
                     )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -278,37 +247,37 @@ fun AddEditPetScreen(
                         modifier = Modifier.weight(1f)
                     )
                     Switch(
-                        checked = sterilizationStatus,
-                        onCheckedChange = { sterilizationStatus = it }
+                        checked = uiState.sterilizationStatus,
+                        onCheckedChange = { viewModel.updateState {  state -> state.copy(sterilizationStatus = it) } }
                     )
                 }
             }
 
             SectionCard(title = "Здоровье") {
                 OutlinedTextField(
-                    value = vaccinationsText,
-                    onValueChange = { vaccinationsText = it },
+                    value = uiState.vaccinationsText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(vaccinationsText = it) } },
                     label = { Text("Вакцинации (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = chronicDiseasesText,
-                    onValueChange = { chronicDiseasesText = it },
+                    value = uiState.chronicDiseasesText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(chronicDiseasesText = it) } },
                     label = { Text("Хронические заболевания (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = allergiesText,
-                    onValueChange = { allergiesText = it },
+                    value = uiState.allergiesText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(allergiesText = it) } },
                     label = { Text("Аллергии (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = medicationsText,
-                    onValueChange = { medicationsText = it },
+                    value = uiState.medicationsText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(medicationsText = it) } },
                     label = { Text("Лекарства (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -316,8 +285,8 @@ fun AddEditPetScreen(
 
             SectionCard(title = "Характер") {
                 OutlinedTextField(
-                    value = personalityTraitsText,
-                    onValueChange = { personalityTraitsText = it },
+                    value = uiState.personalityTraitsText,
+                    onValueChange = { viewModel.updateState { state -> state.copy(personalityTraitsText = it) } },
                     label = { Text("Особенности характера (через запятую)") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -325,15 +294,15 @@ fun AddEditPetScreen(
 
             SectionCard(title = "Расписание") {
                 OutlinedTextField(
-                    value = feedingSchedule,
-                    onValueChange = { feedingSchedule = it },
+                    value = uiState.feedingSchedule,
+                    onValueChange = { viewModel.updateState { state -> state.copy(feedingSchedule = it) } },
                     label = { Text("Режим кормления") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = walkingSchedule,
-                    onValueChange = { walkingSchedule = it },
+                    value = uiState.walkingSchedule,
+                    onValueChange = { viewModel.updateState { state -> state.copy(walkingSchedule = it) } },
                     label = { Text("Расписание прогулок") },
                     modifier = Modifier.fillMaxWidth()
                 )

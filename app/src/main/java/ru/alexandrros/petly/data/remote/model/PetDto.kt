@@ -2,6 +2,7 @@ package ru.alexandrros.petly.data.remote.model
 
 import com.google.firebase.firestore.Blob
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 
 data class PetDto(
     @DocumentId val id: String = "",
@@ -11,6 +12,7 @@ data class PetDto(
     val breed: String? = null,
     val age: Int? = null,
     val weight: Double? = null,
+    @PropertyName("male")
     val isMale: Boolean = true,
     val sterilizationStatus: Boolean? = null,
     val vaccinations: List<String> = emptyList(),

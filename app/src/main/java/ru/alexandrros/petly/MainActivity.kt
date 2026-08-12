@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import ru.alexandrros.petly.data.repository.FirebasePetRepository
 import ru.alexandrros.petly.data.repository.FirebaseRequestRepository
 import ru.alexandrros.petly.data.repository.FirebaseUserRepository
+import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
 import ru.alexandrros.petly.domain.usecase.AddPetUseCase
 import ru.alexandrros.petly.domain.usecase.CheckExistingRequestUseCase
@@ -51,6 +52,7 @@ import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
+import ru.alexandrros.petly.presentation.userpets.AddEditPetViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
 import ru.alexandrros.petly.presentation.userpets.PetsViewModel
 
@@ -157,6 +159,15 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                val addEditPetViewModelFactory: (Pet?) -> ViewModelProvider.Factory = { initialPet ->
+                    AddEditPetViewModel.Factory(
+                        initialPet,
+                        observeCurrentUserUseCase,
+                        addPetUseCase,
+                        updatePetUseCase
+                    )
+                }
+
                 val specialistListViewModelFactory = SpecialistListViewModel.Factory(
                     getAllSpecialistsUseCase
                 )
@@ -189,6 +200,7 @@ class MainActivity : ComponentActivity() {
                     registerViewModelFactory = registerFactory,
                     profileViewModelFactory = profileViewModelFactory,
                     petListViewModelFactory = petsViewModelFactory,
+                    addEditPetViewModelFactory = addEditPetViewModelFactory,
                     requestViewModelFactory = requestsViewModelFactory,
                     requestDetailViewModelFactory = requestDetailViewModelFactory,
                     petDetailViewModelFactory = petDetailViewModelFactory,
