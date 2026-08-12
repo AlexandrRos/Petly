@@ -4,13 +4,16 @@ import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.model.User
 
+enum class DeletionState { IDLE, DELETING, SUCCESS, ERROR }
+
 data class RequestDetailUiState(
     val isLoading: Boolean = true,
     val request: Request? = null,
     val pet: Pet? = null,
     val specialistUser: User? = null,
     val currentUserId: String? = null,
-    val currentUserSpecialist: String? = null
+    val currentUserSpecialist: String? = null,
+    val deletionState: DeletionState = DeletionState.IDLE
 ) {
     val canAccept: Boolean
         get() = currentUserId != null &&

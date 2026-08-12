@@ -11,7 +11,8 @@ fun RequestDto.toDomain(): Request = Request(
     petId = petId,
     petName = petName,
     species = species,
-    specialistUserId = specialistUserId
+    specialistUserId = specialistUserId,
+    createdAt = createdAt
 )
 
 fun Request.toDto(): RequestDto = RequestDto(
@@ -20,5 +21,6 @@ fun Request.toDto(): RequestDto = RequestDto(
     petId = petId,
     petName = petName,
     species = species,
-    specialistUserId = specialistUserId
+    specialistUserId = specialistUserId,
+    createdAt = createdAt
 )
