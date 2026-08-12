@@ -34,6 +34,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.LocalBottomBarHeight
 import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
@@ -62,6 +63,7 @@ fun MainScreen(
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
     petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
+    addEditPetViewModelFactory: (Pet?) -> ViewModelProvider.Factory,
     editProfileViewModelFactory: ViewModelProvider.Factory,
     specialistListViewModelFactory: ViewModelProvider.Factory,
     specialistDetailViewModelFactory: (String) -> ViewModelProvider.Factory
@@ -212,12 +214,8 @@ fun MainScreen(
 
                 composable(Screen.AddPet.route) {
                     AddEditPetScreen(
-                        pet = null,
-                        onSave = { newPet ->
-                            petsViewModel.addPet(newPet)
-                            nestedNavController.popBackStack()
-                        },
-                        onCancel = { nestedNavController.popBackStack() }
+                        viewModelFactory = addEditPetViewModelFactory(null),
+                        onNavigateBack = { nestedNavController.popBackStack() }
                     )
                 }
 
@@ -229,12 +227,8 @@ fun MainScreen(
                     val pet = petsViewModel.getPetById(petId)
                     if (pet != null) {
                         AddEditPetScreen(
-                            pet = pet,
-                            onSave = { updatedPet ->
-                                petsViewModel.updatePet(updatedPet)
-                                nestedNavController.popBackStack()
-                            },
-                            onCancel = { nestedNavController.popBackStack() }
+                            viewModelFactory = addEditPetViewModelFactory(pet),
+                            onNavigateBack = { nestedNavController.popBackStack() }
                         )
                     } else {
                         Box(

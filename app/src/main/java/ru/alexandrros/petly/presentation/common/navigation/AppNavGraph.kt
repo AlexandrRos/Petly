@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.login.LoginRoute
 import ru.alexandrros.petly.presentation.mainscreen.MainScreen
 import ru.alexandrros.petly.presentation.registration.RegisterRoute
@@ -19,6 +20,7 @@ fun AppNavGraph(
     registerViewModelFactory: ViewModelProvider.Factory,
     profileViewModelFactory: ProfileViewModel.Factory,
     petListViewModelFactory: ViewModelProvider.Factory,
+    addEditPetViewModelFactory: (Pet?) -> ViewModelProvider.Factory,
     requestViewModelFactory: ViewModelProvider.Factory,
     requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
     petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
@@ -55,6 +57,7 @@ fun AppNavGraph(
                 profileViewModelFactory = profileViewModelFactory,
                 outerNavController = navController,
                 petListViewModelFactory = petListViewModelFactory,
+                addEditPetViewModelFactory = addEditPetViewModelFactory,
                 requestViewModelFactory = requestViewModelFactory,
                 requestDetailViewModelFactory = requestDetailViewModelFactory,
                 petDetailViewModelFactory = petDetailViewModelFactory,

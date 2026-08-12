@@ -57,6 +57,7 @@ import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
+import ru.alexandrros.petly.presentation.common.toYearsWord
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -211,7 +212,7 @@ fun PetDetailScreen(
                                 SectionCard(title = "Основная информация") {
                                     DetailRow("Вид", currentPet.species)
                                     currentPet.breed?.let { DetailRow("Порода", it) }
-                                    currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                                    currentPet.age?.let { DetailRow("Возраст", "$it ${it.toYearsWord()}") }
                                     currentPet.weight?.let { DetailRow("Вес", "$it кг") }
                                     DetailRow(
                                         "Пол",
@@ -344,7 +345,7 @@ fun PetDetailScreen(
                         SectionCard(title = "Основная информация") {
                             DetailRow("Вид", currentPet.species)
                             currentPet.breed?.let { DetailRow("Порода", it) }
-                            currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                            currentPet.age?.let { DetailRow("Возраст", "$it ${it.toYearsWord()}") }
                             currentPet.weight?.let { DetailRow("Вес", "$it кг") }
                             DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
                             currentPet.sterilizationStatus?.let {
