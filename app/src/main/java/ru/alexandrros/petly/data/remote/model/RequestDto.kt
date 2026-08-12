@@ -8,5 +8,6 @@ data class RequestDto(
     val petId: String = "",
     val petName: String = "",
     val species: String = "",
-    val specialistUserId: String? = null
+    val specialistUserId: String? = null,
+    val createdAt: Long = 0L
 )

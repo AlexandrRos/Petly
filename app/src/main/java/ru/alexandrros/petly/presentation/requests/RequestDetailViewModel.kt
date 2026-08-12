@@ -88,18 +88,18 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             val req = _uiState.value.request ?: return@launch
             if (_uiState.value.isOwner) {
+                _uiState.update { it.copy(deletionState = DeletionState.DELETING) }
                 deleteRequestUseCase(req.id)
                     .onSuccess {
-                        _snackbarEvent.emit("Заявка удалена")
-                        _uiState.update { it.copy(request = null) }
+                        _uiState.update { it.copy(deletionState = DeletionState.SUCCESS) }
                     }
                     .onFailure { e ->
+                        _uiState.update { it.copy(deletionState = DeletionState.IDLE) }
                         _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
                     }
             }
         }
     }
-
     fun acceptRequest() {
         viewModelScope.launch {
             val uid = _uiState.value.currentUserId ?: return@launch
