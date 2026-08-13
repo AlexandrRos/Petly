@@ -51,11 +51,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.collectLatest
+import ru.alexandrros.petly.domain.model.ThemeMode
 import ru.alexandrros.petly.presentation.common.components.DetailRow
+import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
@@ -315,26 +318,6 @@ fun ProfileScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        SectionCard(title = "Статус") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "Статус специалиста: ${
-                                        if (isSpecialist) "Ветеринар" else "Нет"
-                                    }",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Switch(
-                                    checked = isSpecialist,
-                                    onCheckedChange = onSpecialistToggle
-                                )
-                            }
-                        }
-
                         Spacer(modifier = Modifier.height(24.dp))
                     }
 
@@ -360,6 +343,15 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    SectionCard(title = "Тема оформления") {
+                        ThemeModeSelector(
+                            selectedMode = uiState.themeMode,
+                            onModeSelected = profileViewModel::setThemeMode
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Button(
                         onClick = onLogout,
                         modifier = Modifier.fillMaxWidth(),
@@ -372,6 +364,34 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeSelector(
+    selectedMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit
+) {
+    val options = listOf(
+        ThemeMode.SYSTEM to "Системная",
+        ThemeMode.LIGHT to "Светлая",
+        ThemeMode.DARK to "Тёмная"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { (mode, label) ->
+            OutlinedFilterChip(
+                text = label,
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) },
+                modifier = Modifier.weight(1f),
+                labelModifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

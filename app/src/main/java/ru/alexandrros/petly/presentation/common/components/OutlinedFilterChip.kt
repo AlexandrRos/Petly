@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -14,11 +15,19 @@ fun OutlinedFilterChip(
     text: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
-    selected: Boolean
+    selected: Boolean,
+    labelModifier: Modifier = Modifier,
+    textAlign: TextAlign? = null
 ) {
     FilterChip(
         onClick = onClick,
-        label = { Text(text) },
+        label = {
+            Text(
+                text = text,
+                textAlign = textAlign,
+                modifier = labelModifier
+            )
+        },
         modifier = modifier.padding(vertical = 2.dp),
         border = FilterChipDefaults.filterChipBorder(
             selected = selected,

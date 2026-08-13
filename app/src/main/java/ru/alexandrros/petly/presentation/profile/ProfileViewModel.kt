@@ -15,8 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.alexandrros.petly.domain.model.ThemeMode
+import ru.alexandrros.petly.domain.usecase.GetThemeModeUseCase
 import ru.alexandrros.petly.domain.usecase.LogoutUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
+import ru.alexandrros.petly.domain.usecase.SetThemeModeUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateSpecialistUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserPhotoUseCase
 import ru.alexandrros.petly.presentation.common.readAndCompressImage
@@ -25,7 +28,9 @@ class ProfileViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val updateSpecialist: UpdateSpecialistUseCase,
-    private val updateUserPhoto: UpdateUserPhotoUseCase
+    private val updateUserPhoto: UpdateUserPhotoUseCase,
+    private val getThemeModeUseCase: GetThemeModeUseCase,
+    private val setThemeModeUseCase: SetThemeModeUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -38,6 +43,12 @@ class ProfileViewModel(
         viewModelScope.launch {
             observeCurrentUser().collect { user ->
                 _uiState.update { it.copy(isLoading = false, currentUser = user) }
+            }
+        }
+
+        viewModelScope.launch {
+            getThemeModeUseCase().collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
             }
         }
     }
@@ -56,6 +67,12 @@ class ProfileViewModel(
                 .onFailure { e ->
                     Log.e("ProfileViewModel", "Failed to update specialist", e)
                 }
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            setThemeModeUseCase(mode)
         }
     }
 
@@ -97,13 +114,20 @@ class ProfileViewModel(
         private val observeCurrentUser: ObserveCurrentUserUseCase,
         private val logoutUseCase: LogoutUseCase,
         private val updateSpecialist: UpdateSpecialistUseCase,
-        private val updateUserPhoto: UpdateUserPhotoUseCase
+        private val updateUserPhoto: UpdateUserPhotoUseCase,
+        private val getThemeModeUseCase: GetThemeModeUseCase,
+        private val setThemeModeUseCase: SetThemeModeUseCase
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
                 @Suppress("UNCHECKED_CAST")
                 return ProfileViewModel(
-                    observeCurrentUser, logoutUseCase, updateSpecialist, updateUserPhoto
+                    observeCurrentUser,
+                    logoutUseCase,
+                    updateSpecialist,
+                    updateUserPhoto,
+                    getThemeModeUseCase,
+                    setThemeModeUseCase
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
