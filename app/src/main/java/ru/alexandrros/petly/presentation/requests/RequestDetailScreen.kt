@@ -56,6 +56,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
@@ -66,9 +68,12 @@ import ru.alexandrros.petly.presentation.common.formatTimestamp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestDetailScreen(
-    viewModel: RequestDetailViewModel,
+    requestId: String,
     onBackClick: () -> Unit,
-    onSpecialistClick: (specialistId: String) -> Unit
+    onSpecialistClick: (specialistId: String) -> Unit,
+    viewModel: RequestDetailViewModel = koinViewModel(
+        parameters = { parametersOf(requestId) }
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }

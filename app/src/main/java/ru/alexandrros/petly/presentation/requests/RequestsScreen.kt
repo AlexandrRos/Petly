@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.koin.androidx.compose.koinViewModel
 import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
@@ -48,7 +49,7 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestsScreen(
-    requestsViewModel: RequestsViewModel,
+    requestsViewModel: RequestsViewModel = koinViewModel(),
     onRequestClick: (requestId: String) -> Unit
 ) {
     val uiState by requestsViewModel.uiState.collectAsState()

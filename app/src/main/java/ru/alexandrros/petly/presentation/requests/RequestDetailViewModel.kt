@@ -1,7 +1,6 @@
 package ru.alexandrros.petly.presentation.requests
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,12 +20,12 @@ import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 
 class RequestDetailViewModel(
     private val requestId: String,
-    private val getRequestById: GetRequestByIdUseCase,
+    private val getRequestByIdUseCase: GetRequestByIdUseCase,
     private val acceptRequestUseCase: AcceptRequestUseCase,
     private val deleteRequestUseCase: DeleteRequestUseCase,
-    private val getPetByUser: GetPetByUserUseCase,
-    private val getUserById: GetUserByIdUseCase,
-    private val observeCurrentUser: ObserveCurrentUserUseCase
+    private val getPetByUserUseCase: GetPetByUserUseCase,
+    private val getUserByIdUseCase: GetUserByIdUseCase,
+    private val observeCurrentUserUseCase: ObserveCurrentUserUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RequestDetailUiState())
@@ -37,7 +36,7 @@ class RequestDetailViewModel(
 
     init {
         viewModelScope.launch {
-            observeCurrentUser()
+            observeCurrentUserUseCase()
                 .catch {}
                 .collect { user ->
                     _uiState.update { state ->
@@ -55,11 +54,11 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val req = getRequestById(requestId)
+            val req = getRequestByIdUseCase(requestId)
             _uiState.update { it.copy(request = req, isLoading = false) }
 
             if (req != null) {
-                getPetByUser(req.creatorUserId, req.petId)
+                getPetByUserUseCase(req.creatorUserId, req.petId)
                     .catch { e ->
                         if (e !is CancellationException) {
                             _snackbarEvent.emit("Ошибка загрузки питомца: ${e.localizedMessage}")
@@ -70,7 +69,7 @@ class RequestDetailViewModel(
                     }
 
                 req.specialistUserId?.let { specialistId ->
-                    getUserById(specialistId)
+                    getUserByIdUseCase(specialistId)
                         .catch { e ->
                             if (e !is CancellationException) {
                                 _snackbarEvent.emit("Ошибка загрузки специалиста: ${e.localizedMessage}")
@@ -112,32 +111,6 @@ class RequestDetailViewModel(
                 .onFailure { e ->
                     _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
                 }
-        }
-    }
-
-    class Factory(
-        private val requestId: String,
-        private val getRequestById: GetRequestByIdUseCase,
-        private val acceptRequestUseCase: AcceptRequestUseCase,
-        private val deleteRequestUseCase: DeleteRequestUseCase,
-        private val getPetByUser: GetPetByUserUseCase,
-        private val getUserById: GetUserByIdUseCase,
-        private val observeCurrentUser: ObserveCurrentUserUseCase
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(RequestDetailViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return RequestDetailViewModel(
-                    requestId,
-                    getRequestById,
-                    acceptRequestUseCase,
-                    deleteRequestUseCase,
-                    getPetByUser,
-                    getUserById,
-                    observeCurrentUser
-                ) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

@@ -47,10 +47,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
@@ -63,11 +63,13 @@ import ru.alexandrros.petly.presentation.common.toYearsWord
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetDetailScreen(
+    petId: String,
     onBackClick: () -> Unit,
     onEditClick: (Pet) -> Unit,
-    viewModelFactory: ViewModelProvider.Factory
+    viewModel: PetDetailViewModel = koinViewModel(
+        parameters = { parametersOf(petId) }
+    )
 ) {
-    val viewModel: PetDetailViewModel = viewModel(factory = viewModelFactory)
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 

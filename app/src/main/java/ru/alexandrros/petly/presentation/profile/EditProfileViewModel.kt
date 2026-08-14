@@ -1,7 +1,6 @@
 package ru.alexandrros.petly.presentation.profile
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,19 +68,6 @@ class EditProfileViewModel(
                     _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
                 }
             _uiState.update { it.copy(isSaving = false) }
-        }
-    }
-
-    class Factory(
-        private val observeCurrentUser: ObserveCurrentUserUseCase,
-        private val updateUserProfile: UpdateUserProfileUseCase
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(EditProfileViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return EditProfileViewModel(observeCurrentUser, updateUserProfile) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

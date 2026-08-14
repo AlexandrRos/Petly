@@ -41,13 +41,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.koin.androidx.compose.koinViewModel
 import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpecialistsScreen(
-    viewModel: SpecialistListViewModel,
+    viewModel: SpecialistListViewModel = koinViewModel(),
     onSpecialistClick: (specialistId: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()

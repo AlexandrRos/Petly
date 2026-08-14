@@ -3,18 +3,16 @@ package ru.alexandrros.petly.presentation.login
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 
 
 @Composable
 fun LoginRoute(
-    factory: ViewModelProvider.Factory,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    viewModel: LoginViewModel = koinViewModel()
 ) {
-    val viewModel: LoginViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LoginScreen(
@@ -23,6 +21,6 @@ fun LoginRoute(
             viewModel.login(email, password, onLoginSuccess)
         },
         onNavigateToRegister = onNavigateToRegister,
-        onResetState = { viewModel.resetState() }
+        onResetState = viewModel::resetState
     )
 }
