@@ -1,7 +1,6 @@
 package ru.alexandrros.petly.presentation.userpets
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,10 +25,10 @@ import ru.alexandrros.petly.domain.usecase.ObservePetByUserUseCase
 
 class PetDetailViewModel(
     private val petId: String,
-    private val observeCurrentUser: ObserveCurrentUserUseCase,
-    private val observePetByUser: ObservePetByUserUseCase,
-    private val checkExistingRequest: CheckExistingRequestUseCase,
-    private val createRequest: CreateRequestUseCase
+    private val observeCurrentUserUseCase: ObserveCurrentUserUseCase,
+    private val observePetByUserUseCase: ObservePetByUserUseCase,
+    private val checkExistingRequestUseCase: CheckExistingRequestUseCase,
+    private val createRequestUseCase: CreateRequestUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PetDetailUiState())
     val uiState: StateFlow<PetDetailUiState> = _uiState.asStateFlow()
@@ -37,14 +36,14 @@ class PetDetailViewModel(
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
 
-    private val currentUserId: StateFlow<String?> = observeCurrentUser()
+    private val currentUserId: StateFlow<String?> = observeCurrentUserUseCase()
         .map { it?.uid }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val petFlow: StateFlow<Pet?> = currentUserId
         .flatMapLatest { uid ->
-            if (uid != null) observePetByUser(uid, petId)
+            if (uid != null) observePetByUserUseCase(uid, petId)
             else flowOf(null)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
@@ -68,13 +67,13 @@ class PetDetailViewModel(
                 _uiState.update { it.copy(isCreating = false) }
                 return@launch
             }
-            val alreadyExists = checkExistingRequest(uid, petId)
+            val alreadyExists = checkExistingRequestUseCase(uid, petId)
             if (alreadyExists) {
                 _snackbarEvent.emit("Заявка для этого питомца уже создана")
                 _uiState.update { it.copy(isCreating = false) }
                 return@launch
             }
-            createRequest(
+            createRequestUseCase(
                 Request(
                     creatorUserId = uid,
                     petId = petId,
@@ -87,25 +86,6 @@ class PetDetailViewModel(
                 _snackbarEvent.emit("Ошибка при создании заявки: ${e.localizedMessage}")
             }
             _uiState.update { it.copy(isCreating = false) }
-        }
-    }
-
-    class Factory(
-        private val petId: String,
-        private val observeCurrentUser: ObserveCurrentUserUseCase,
-        private val observePetByUserUseCase: ObservePetByUserUseCase,
-        private val checkExistingRequest: CheckExistingRequestUseCase,
-        private val createRequest: CreateRequestUseCase
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(PetDetailViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return PetDetailViewModel(
-                    petId, observeCurrentUser, observePetByUserUseCase,
-                    checkExistingRequest, createRequest
-                ) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

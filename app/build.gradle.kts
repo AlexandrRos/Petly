@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.coil.compose)
     implementation(libs.coil.kt)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
 
 
     testImplementation(libs.junit)

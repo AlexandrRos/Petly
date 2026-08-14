@@ -2,18 +2,16 @@ package ru.alexandrros.petly.presentation.registration
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 
 
 @Composable
 fun RegisterRoute(
-    factory: ViewModelProvider.Factory,
     onRegisterSuccess: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    viewModel: RegisterViewModel = koinViewModel()
 ) {
-    val viewModel: RegisterViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     RegisterScreen(

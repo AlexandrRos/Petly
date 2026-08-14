@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.collectLatest
+import org.koin.androidx.compose.koinViewModel
 import ru.alexandrros.petly.domain.model.ThemeMode
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
@@ -66,12 +67,11 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    profileViewModel: ProfileViewModel,
     onLogout: () -> Unit,
-    onSpecialistToggle: (Boolean) -> Unit,
-    onEditProfile: () -> Unit = {}
+    onEditProfile: () -> Unit,
+    viewModel: ProfileViewModel = koinViewModel()
 ) {
-    val uiState by profileViewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val contentInsets = rememberContentInsets()
@@ -83,11 +83,11 @@ fun ProfileScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { profileViewModel.updateProfilePhoto(it, context) }
+        uri?.let { viewModel.updateProfilePhoto(it, context) }
     }
 
     LaunchedEffect(Unit) {
-        profileViewModel.snackbarEvent.collectLatest { message ->
+        viewModel.snackbarEvent.collectLatest { message ->
             snackbarHostState.showSnackbar(message)
         }
     }
@@ -336,7 +336,7 @@ fun ProfileScreen(
                             )
                             Switch(
                                 checked = isSpecialist,
-                                onCheckedChange = onSpecialistToggle
+                                onCheckedChange = { viewModel.setSpecialist(it) }
                             )
                         }
                     }
@@ -346,14 +346,17 @@ fun ProfileScreen(
                     SectionCard(title = "Тема оформления") {
                         ThemeModeSelector(
                             selectedMode = uiState.themeMode,
-                            onModeSelected = profileViewModel::setThemeMode
+                            onModeSelected = viewModel::setThemeMode
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = onLogout,
+                        onClick = {
+                            viewModel.logout()
+                            onLogout()
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -367,7 +370,6 @@ fun ProfileScreen(
         }
     }
 }
-
 @Composable
 private fun ThemeModeSelector(
     selectedMode: ThemeMode,

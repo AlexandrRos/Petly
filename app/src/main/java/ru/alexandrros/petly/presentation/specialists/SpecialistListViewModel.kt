@@ -2,7 +2,6 @@ package ru.alexandrros.petly.presentation.specialists
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,18 +33,6 @@ class SpecialistListViewModel(
                         it.copy(isLoading = false, specialists = list, errorMessage = null)
                     }
                 }
-        }
-    }
-
-    class Factory(
-        private val getAllSpecialists: GetAllSpecialistsUseCase
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(SpecialistListViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return SpecialistListViewModel(getAllSpecialists) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

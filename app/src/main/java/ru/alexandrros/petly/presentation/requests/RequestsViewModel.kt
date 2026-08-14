@@ -2,7 +2,6 @@ package ru.alexandrros.petly.presentation.requests
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,25 +99,4 @@ class RequestsViewModel(
     fun toggleView() {
         _uiState.update { it.copy(showMyRequests = !it.showMyRequests) }
     }
-
-    class Factory(
-        private val observeCurrentUser: ObserveCurrentUserUseCase,
-        private val getRequestsByCreator: GetRequestsByCreatorUseCase,
-        private val getAllRequests: GetAllRequestsUseCase,
-        private val getPetByUser: GetPetByUserUseCase
-    ) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(RequestsViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return RequestsViewModel(
-                    observeCurrentUser,
-                    getRequestsByCreator,
-                    getAllRequests,
-                    getPetByUser
-                ) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
-        }
-    }
-
 }

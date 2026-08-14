@@ -1,7 +1,6 @@
 package ru.alexandrros.petly.presentation.mainscreen
 
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -21,10 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -34,42 +30,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import ru.alexandrros.petly.domain.model.Pet
 import ru.alexandrros.petly.presentation.common.components.LocalBottomBarHeight
 import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
 import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileScreen
-import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
-import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
-import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistDetailScreen
-import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
-import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.PetsScreen
-import ru.alexandrros.petly.presentation.userpets.PetsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    profileViewModelFactory: ProfileViewModel.Factory,
-    petListViewModelFactory: ViewModelProvider.Factory,
-    outerNavController: NavController,
-    requestViewModelFactory: ViewModelProvider.Factory,
-    requestDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    petDetailViewModelFactory: (String) -> ViewModelProvider.Factory,
-    addEditPetViewModelFactory: (Pet?) -> ViewModelProvider.Factory,
-    editProfileViewModelFactory: ViewModelProvider.Factory,
-    specialistListViewModelFactory: ViewModelProvider.Factory,
-    specialistDetailViewModelFactory: (String) -> ViewModelProvider.Factory
+    outerNavController: NavController
 ) {
-    val profileViewModel: ProfileViewModel = viewModel(factory = profileViewModelFactory)
-    val petsViewModel: PetsViewModel = viewModel(factory = petListViewModelFactory)
     val nestedNavController = rememberNavController()
     val bottomNavItems = listOf(
         TabInfo(Screen.Pets, "Ваши питомцы", Icons.Filled.Pets),
@@ -123,15 +101,10 @@ fun MainScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 composable(Screen.Specialists.route) {
-                    val vm: SpecialistListViewModel =
-                        viewModel(factory = specialistListViewModelFactory)
                     SpecialistsScreen(
-                        viewModel = vm,
                         onSpecialistClick = { specialistId ->
                             nestedNavController.navigate(
-                                Screen.SpecialistDetail.createRoute(
-                                    specialistId
-                                )
+                                Screen.SpecialistDetail.createRoute(specialistId)
                             )
                         }
                     )
@@ -142,18 +115,14 @@ fun MainScreen(
                     arguments = listOf(navArgument("specialistId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val specialistId = backStackEntry.arguments?.getString("specialistId") ?: ""
-                    val vm: SpecialistDetailViewModel = viewModel(
-                        factory = specialistDetailViewModelFactory(specialistId)
-                    )
                     SpecialistDetailScreen(
-                        viewModel = vm,
+                        specialistId = specialistId,
                         onBackClick = { nestedNavController.popBackStack() }
                     )
                 }
 
                 composable(Screen.Pets.route) {
                     PetsScreen(
-                        viewModel = petsViewModel,
                         onPetClick = { pet ->
                             nestedNavController.navigate(Screen.PetDetail.createRoute(pet.id))
                         },
@@ -162,11 +131,7 @@ fun MainScreen(
                 }
 
                 composable(Screen.Requests.route) {
-                    val requestsViewModel: RequestsViewModel =
-                        viewModel(factory = requestViewModelFactory)
-
                     RequestsScreen(
-                        requestsViewModel = requestsViewModel,
                         onRequestClick = { requestId ->
                             nestedNavController.navigate(Screen.RequestDetail.createRoute(requestId))
                         }
@@ -175,17 +140,10 @@ fun MainScreen(
 
                 composable(Screen.Profile.route) {
                     ProfileScreen(
-                        profileViewModel = profileViewModel,
                         onLogout = {
-                            profileViewModel.logout()
                             outerNavController.navigate("login") {
                                 popUpTo(0) { inclusive = true }
                             }
-                        },
-                        onSpecialistToggle = { isSpecialist ->
-                            profileViewModel.setSpecialist(
-                                isSpecialist
-                            )
                         },
                         onEditProfile = { nestedNavController.navigate(Screen.EditProfile.route) }
                     )
@@ -193,8 +151,7 @@ fun MainScreen(
 
                 composable(Screen.EditProfile.route) {
                     EditProfileScreen(
-                        onBackClick = { nestedNavController.popBackStack() },
-                        viewModelFactory = editProfileViewModelFactory
+                        onBackClick = { nestedNavController.popBackStack() }
                     )
                 }
 
@@ -204,17 +161,17 @@ fun MainScreen(
                 ) { backStackEntry ->
                     val petId = backStackEntry.arguments?.getString("petId") ?: ""
                     PetDetailScreen(
+                        petId = petId,
                         onBackClick = { nestedNavController.popBackStack() },
                         onEditClick = { petToEdit ->
                             nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
-                        },
-                        viewModelFactory = petDetailViewModelFactory(petId)
+                        }
                     )
                 }
 
                 composable(Screen.AddPet.route) {
                     AddEditPetScreen(
-                        viewModelFactory = addEditPetViewModelFactory(null),
+                        petId = null,
                         onNavigateBack = { nestedNavController.popBackStack() }
                     )
                 }
@@ -224,20 +181,10 @@ fun MainScreen(
                     arguments = listOf(navArgument("petId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val petId = backStackEntry.arguments?.getString("petId") ?: ""
-                    val pet = petsViewModel.getPetById(petId)
-                    if (pet != null) {
-                        AddEditPetScreen(
-                            viewModelFactory = addEditPetViewModelFactory(pet),
-                            onNavigateBack = { nestedNavController.popBackStack() }
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Питомец не найден", style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
+                    AddEditPetScreen(
+                        petId = petId,
+                        onNavigateBack = { nestedNavController.popBackStack() }
+                    )
                 }
 
                 composable(
@@ -245,17 +192,12 @@ fun MainScreen(
                     arguments = listOf(navArgument("requestId") { type = NavType.StringType })
                 ) { backStackEntry ->
                     val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
-                    val viewModel: RequestDetailViewModel = viewModel(
-                        factory = requestDetailViewModelFactory(requestId)
-                    )
                     RequestDetailScreen(
-                        viewModel = viewModel,
+                        requestId = requestId,
                         onBackClick = { nestedNavController.popBackStack() },
                         onSpecialistClick = { specialistId ->
                             nestedNavController.navigate(
-                                Screen.SpecialistDetail.createRoute(
-                                    specialistId
-                                )
+                                Screen.SpecialistDetail.createRoute(specialistId)
                             )
                         }
                     )

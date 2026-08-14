@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
@@ -47,8 +49,11 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpecialistDetailScreen(
-    viewModel: SpecialistDetailViewModel,
-    onBackClick: () -> Unit
+    specialistId: String,
+    onBackClick: () -> Unit,
+    viewModel: SpecialistDetailViewModel = koinViewModel(
+        parameters = { parametersOf(specialistId) }
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
