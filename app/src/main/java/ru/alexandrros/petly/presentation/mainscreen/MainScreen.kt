@@ -1,6 +1,7 @@
 package ru.alexandrros.petly.presentation.mainscreen
 
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -22,7 +23,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -56,6 +56,30 @@ fun MainScreen(
         TabInfo(Screen.Profile, "Аккаунт", Icons.Filled.AccountCircle)
     )
 
+    // Safe pop: only pops if there is a previous entry (avoid popping root)
+    val safePopBackStack: () -> Unit = {
+        if (nestedNavController.previousBackStackEntry != null) {
+            nestedNavController.popBackStack()
+        }
+    }
+
+    // Root routes of each tab – used to detect when on a root screen
+    val rootRoutes = setOf(
+        Screen.Pets.route,
+        Screen.Requests.route,
+        Screen.Specialists.route,
+        Screen.Profile.route
+    )
+
+    // Intercept system back press when on a root tab
+    BackHandler(enabled = rootRoutes.contains(
+        nestedNavController.currentBackStackEntry?.destination?.route
+    )) {
+        if (outerNavController.previousBackStackEntry != null) {
+            outerNavController.popBackStack()
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -65,20 +89,57 @@ fun MainScreen(
                 tonalElevation = NavigationBarDefaults.Elevation
             ) {
                 val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
+                val currentRoute = navBackStackEntry?.destination?.route
+
+                // Determine which parent tab the current route belongs to
+                fun isTabSelected(tab: Screen): Boolean = when (tab) {
+                    Screen.Pets -> currentRoute in setOf(
+                        Screen.Pets.route,
+                        Screen.PetDetail.route,
+                        Screen.AddPet.route,
+                        Screen.EditPet.route
+                    )
+                    Screen.Requests -> currentRoute in setOf(
+                        Screen.Requests.route,
+                        Screen.RequestDetail.route
+                    )
+                    Screen.Specialists -> currentRoute in setOf(
+                        Screen.Specialists.route,
+                        Screen.SpecialistDetail.route
+                    )
+                    Screen.Profile -> currentRoute in setOf(
+                        Screen.Profile.route,
+                        Screen.EditProfile.route
+                    )
+                    else -> currentRoute == tab.route
+                }
 
                 bottomNavItems.forEach { tab ->
                     NavigationBarItem(
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label) },
-                        selected = currentDestination?.hierarchy?.any { it.route == tab.screen.route } == true,
+                        selected = isTabSelected(tab.screen),
                         onClick = {
-                            nestedNavController.navigate(tab.screen.route) {
-                                popUpTo(nestedNavController.graph.findStartDestination().id) {
-                                    saveState = true
+                            // If already on the root of this tab -> do nothing
+                            if (currentRoute == tab.screen.route) {
+                                return@NavigationBarItem
+                            }
+                            // If on a sub-screen of this tab -> pop to root
+                            else if (isTabSelected(tab.screen)) {
+                                nestedNavController.popBackStack(
+                                    tab.screen.route,
+                                    inclusive = false
+                                )
+                            }
+                            // Otherwise switch to a different tab (save/restore state)
+                            else {
+                                nestedNavController.navigate(tab.screen.route) {
+                                    popUpTo(nestedNavController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
@@ -117,7 +178,7 @@ fun MainScreen(
                     val specialistId = backStackEntry.arguments?.getString("specialistId") ?: ""
                     SpecialistDetailScreen(
                         specialistId = specialistId,
-                        onBackClick = { nestedNavController.popBackStack() }
+                        onBackClick = safePopBackStack
                     )
                 }
 
@@ -151,7 +212,7 @@ fun MainScreen(
 
                 composable(Screen.EditProfile.route) {
                     EditProfileScreen(
-                        onBackClick = { nestedNavController.popBackStack() }
+                        onBackClick = safePopBackStack
                     )
                 }
 
@@ -162,7 +223,7 @@ fun MainScreen(
                     val petId = backStackEntry.arguments?.getString("petId") ?: ""
                     PetDetailScreen(
                         petId = petId,
-                        onBackClick = { nestedNavController.popBackStack() },
+                        onBackClick = safePopBackStack,
                         onEditClick = { petToEdit ->
                             nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
                         }
@@ -172,7 +233,7 @@ fun MainScreen(
                 composable(Screen.AddPet.route) {
                     AddEditPetScreen(
                         petId = null,
-                        onNavigateBack = { nestedNavController.popBackStack() }
+                        onNavigateBack = safePopBackStack
                     )
                 }
 
@@ -183,7 +244,7 @@ fun MainScreen(
                     val petId = backStackEntry.arguments?.getString("petId") ?: ""
                     AddEditPetScreen(
                         petId = petId,
-                        onNavigateBack = { nestedNavController.popBackStack() }
+                        onNavigateBack = safePopBackStack
                     )
                 }
 
@@ -194,7 +255,7 @@ fun MainScreen(
                     val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
                     RequestDetailScreen(
                         requestId = requestId,
-                        onBackClick = { nestedNavController.popBackStack() },
+                        onBackClick = safePopBackStack,
                         onSpecialistClick = { specialistId ->
                             nestedNavController.navigate(
                                 Screen.SpecialistDetail.createRoute(specialistId)
