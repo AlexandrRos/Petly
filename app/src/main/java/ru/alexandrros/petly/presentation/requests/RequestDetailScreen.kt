@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,17 +54,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 import ru.alexandrros.petly.presentation.common.formatTimestamp
+import ru.alexandrros.petly.presentation.common.toYearsWord
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +82,7 @@ fun RequestDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val contentInsets = rememberContentInsets()
 
@@ -228,6 +234,10 @@ fun RequestDetailScreen(
 
         val petPhotoBytes = uiState.pet?.photoBytes
         val specialist = uiState.specialistUser
+        val ownerUser = uiState.ownerUser
+
+        val isSpecialistCurrentUser = req.specialistUserId != null && req.specialistUserId == uiState.currentUserId
+        val showOwner = uiState.currentUserId != null && uiState.currentUserId != req.creatorUserId
 
         Column(
             modifier = Modifier
@@ -313,74 +323,18 @@ fun RequestDetailScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color.Transparent,
-                                    onClick = { onSpecialistClick(req.specialistUserId) }
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Surface(
-                                            modifier = Modifier.size(40.dp),
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.primaryContainer
-                                        ) {
-                                            if (specialist.photoBytes != null) {
-                                                AsyncImage(
-                                                    model = ImageRequest.Builder(LocalContext.current)
-                                                        .data(specialist.photoBytes)
-                                                        .crossfade(true)
-                                                        .build(),
-                                                    contentDescription = "Фото специалиста",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.AccountCircle,
-                                                        contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                        modifier = Modifier.size(32.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = specialist.name.ifEmpty { specialist.email },
-                                                style = MaterialTheme.typography.titleSmall,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            if (specialist.name.isNotEmpty()) {
-                                                Text(
-                                                    text = specialist.email,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            specialist.specialist?.let { spec ->
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = spec,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = "Подробнее",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                UserRow(
+                                    user = specialist,
+                                    onClick = if (isSpecialistCurrentUser) {
+                                        {}
+                                    } else {
+                                        { onSpecialistClick(req.specialistUserId) }
+                                    },
+                                    avatarSize = 40.dp,
+                                    label = specialist.specialist,
+                                    showArrow = !isSpecialistCurrentUser,
+                                    extraLabel = if (isSpecialistCurrentUser) "Вы" else null
+                                )
                             }
                         }
                     }
@@ -436,77 +390,69 @@ fun RequestDetailScreen(
                 if (req.specialistUserId != null && specialist != null) {
                     SectionCard(
                         title = "Специалист",
-                        onClick = { onSpecialistClick(req.specialistUserId) }
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(48.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
-                            ) {
-                                if (specialist.photoBytes != null) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(specialist.photoBytes)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Фото специалиста",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Default.AccountCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                    }
-                                }
+                        onClick = {
+                            if (!isSpecialistCurrentUser) {
+                                onSpecialistClick(req.specialistUserId)
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = specialist.name.ifEmpty { specialist.email },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                if (specialist.name.isNotEmpty()) {
-                                    Text(
-                                        text = specialist.email,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                specialist.specialist?.let { spec ->
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = spec,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Подробнее",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
+                    ) {
+                        UserRow(
+                            user = specialist,
+                            onClick = if (isSpecialistCurrentUser) {
+                                {}
+                            } else {
+                                { onSpecialistClick(req.specialistUserId) }
+                            },
+                            avatarSize = 48.dp,
+                            label = specialist.specialist,
+                            showArrow = !isSpecialistCurrentUser,
+                            extraLabel = if (isSpecialistCurrentUser) "Вы" else null
+                        )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+            }
+
+            if (showOwner) {
+                SectionCard(
+                    title = "Владелец",
+                    onClick = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
+                        }
+                    }
+                ) {
+                    if (ownerUser == null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        UserRow(
+                            user = ownerUser,
+                            onClick = {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
+                                }
+                            },
+                            avatarSize = 48.dp,
+                            label = null,
+                            showArrow = true
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             uiState.pet?.let { currentPet ->
                 SectionCard(title = "Основная информация") {
                     DetailRow("Вид", currentPet.species)
                     currentPet.breed?.let { DetailRow("Порода", it) }
-                    currentPet.age?.let { DetailRow("Возраст", "$it лет") }
+                    currentPet.age?.let { DetailRow("Возраст", "$it ${it.toYearsWord()}") }
                     currentPet.weight?.let { DetailRow("Вес", "$it кг") }
                     DetailRow("Пол", if (currentPet.isMale) "Мужской" else "Женский")
                     currentPet.sterilizationStatus?.let {
@@ -572,6 +518,103 @@ fun RequestDetailScreen(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun UserRow(
+    user: User,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    avatarSize: Dp = 48.dp,
+    label: String? = null,
+    showArrow: Boolean = true,
+    extraLabel: String? = null
+) {
+    val context = LocalContext.current
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(avatarSize),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                if (user.photoBytes != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(user.photoBytes)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Фото пользователя",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(avatarSize * 0.7f)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user.name.ifEmpty { user.email },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (user.name.isNotEmpty()) {
+                    Text(
+                        text = user.email,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (label != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (extraLabel != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = extraLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+            if (showArrow) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Подробнее",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Вы",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

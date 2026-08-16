@@ -79,6 +79,16 @@ class RequestDetailViewModel(
                             _uiState.update { it.copy(specialistUser = user) }
                         }
                 }
+
+                getUserByIdUseCase(req.creatorUserId)
+                    .catch { e ->
+                        if (e !is CancellationException) {
+                            _snackbarEvent.emit("Ошибка загрузки владельца: ${e.localizedMessage}")
+                        }
+                    }
+                    .collect { user ->
+                        _uiState.update { it.copy(ownerUser = user) }
+                    }
             }
         }
     }
@@ -99,6 +109,7 @@ class RequestDetailViewModel(
             }
         }
     }
+
     fun acceptRequest() {
         viewModelScope.launch {
             val uid = _uiState.value.currentUserId ?: return@launch

@@ -11,6 +11,7 @@ data class RequestDetailUiState(
     val request: Request? = null,
     val pet: Pet? = null,
     val specialistUser: User? = null,
+    val ownerUser: User? = null,
     val currentUserId: String? = null,
     val currentUserSpecialist: String? = null,
     val deletionState: DeletionState = DeletionState.IDLE
