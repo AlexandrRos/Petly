@@ -331,48 +331,128 @@ fun RequestDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        horizontalAlignment = if (showOwner) Alignment.Start else Alignment.CenterHorizontally,
+                        verticalArrangement = if (showOwner) Arrangement.SpaceBetween else Arrangement.Top,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                     ) {
-                        Surface(
-                            modifier = Modifier.size(120.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            if (petPhotoBytes != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(petPhotoBytes)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Фото питомца",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Pets,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(64.dp)
+                        if (showOwner) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(80.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    if (petPhotoBytes != null) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(petPhotoBytes)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Фото питомца",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Pets,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(40.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = req.petName,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = req.species,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
+
+                            SectionCard(
+                                title = "Владелец",
+                                onClick = {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
+                                    }
+                                }
+                            ) {
+                                if (ownerUser == null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                } else {
+                                    UserRow(
+                                        user = ownerUser,
+                                        onClick = {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
+                                            }
+                                        },
+                                        avatarSize = 40.dp,
+                                        label = null,
+                                        showArrow = true
+                                    )
+                                }
+                            }
+                        } else {
+                            Surface(
+                                modifier = Modifier.size(120.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                if (petPhotoBytes != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(petPhotoBytes)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Фото питомца",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Pets,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(64.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = req.petName,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = req.species,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = req.petName,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = req.species,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
 
                     Column(
@@ -388,17 +468,18 @@ fun RequestDetailScreen(
                                 if (req.specialistUserId != null) "Принята специалистом" else "Ожидает специалиста"
                             )
 
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            Text(
+                                text = "Специалист",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+
                             if (req.specialistUserId != null && specialist != null) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant
-                                )
-                                Text(
-                                    text = "Специалист",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
                                 UserRow(
                                     user = specialist,
                                     onClick = if (isSpecialistCurrentUser) {
@@ -411,6 +492,19 @@ fun RequestDetailScreen(
                                     showArrow = !isSpecialistCurrentUser,
                                     extraLabel = if (isSpecialistCurrentUser) "Вы" else null
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Специалист ещё не назначен",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -489,7 +583,7 @@ fun RequestDetailScreen(
                 }
             }
 
-            if (showOwner) {
+            if (showOwner && !isLandscape) {
                 SectionCard(
                     title = "Владелец",
                     onClick = {
