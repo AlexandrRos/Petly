@@ -176,13 +176,20 @@ private fun RequestCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (request.specialistUserId != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Принята специалистом",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (request.specialistUserId != null) {
+                        Text(
+                            text = "Принята специалистом",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
