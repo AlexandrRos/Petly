@@ -41,7 +41,7 @@ import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileScreen
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
-import ru.alexandrros.petly.presentation.specialists.SpecialistDetailScreen
+import ru.alexandrros.petly.users.UserDetailScreen
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
@@ -179,19 +179,19 @@ fun MainScreen(
                     SpecialistsScreen(
                         onSpecialistClick = { specialistId ->
                             nestedNavController.navigate(
-                                Screen.SpecialistDetail.createRoute(specialistId)
+                                Screen.UserDetail.createRoute(specialistId)
                             )
                         }
                     )
                 }
 
                 composable(
-                    route = Screen.SpecialistDetail.route,
-                    arguments = listOf(navArgument("specialistId") { type = NavType.StringType })
+                    route = Screen.UserDetail.route,
+                    arguments = listOf(navArgument("userId") { type = NavType.StringType })
                 ) { backStackEntry ->
-                    val specialistId = backStackEntry.arguments?.getString("specialistId") ?: ""
-                    SpecialistDetailScreen(
-                        specialistId = specialistId,
+                    val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                    UserDetailScreen(
+                        userId = userId,
                         onBackClick = safePopBackStack
                     )
                 }
@@ -270,9 +270,9 @@ fun MainScreen(
                     RequestDetailScreen(
                         requestId = requestId,
                         onBackClick = safePopBackStack,
-                        onSpecialistClick = { specialistId ->
+                        onUserClick = { userId ->
                             nestedNavController.navigate(
-                                Screen.SpecialistDetail.createRoute(specialistId)
+                                Screen.UserDetail.createRoute(userId)
                             )
                         }
                     )

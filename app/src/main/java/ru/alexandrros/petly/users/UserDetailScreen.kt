@@ -1,4 +1,4 @@
-package ru.alexandrros.petly.presentation.specialists
+package ru.alexandrros.petly.users
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
@@ -48,11 +48,11 @@ import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpecialistDetailScreen(
-    specialistId: String,
+fun UserDetailScreen(
+    userId: String,
     onBackClick: () -> Unit,
-    viewModel: SpecialistDetailViewModel = koinViewModel(
-        parameters = { parametersOf(specialistId) }
+    viewModel: UserDetailViewModel = koinViewModel(
+        parameters = { parametersOf(userId) }
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -67,13 +67,16 @@ fun SpecialistDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        uiState.user?.name?.ifEmpty { "Специалист" } ?: "Специалист",
+                        uiState.user?.name?.ifEmpty { "Профиль" } ?: "Профиль",
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -86,7 +89,9 @@ fun SpecialistDetailScreen(
         when {
             uiState.isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -95,7 +100,9 @@ fun SpecialistDetailScreen(
 
             uiState.errorMessage != null -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -149,7 +156,7 @@ fun SpecialistDetailScreen(
                                                 .data(user.photoBytes)
                                                 .crossfade(true)
                                                 .build(),
-                                            contentDescription = "Фото специалиста",
+                                            contentDescription = "Фото пользователя",
                                             modifier = Modifier.fillMaxSize(),
                                             contentScale = ContentScale.Crop
                                         )
@@ -204,7 +211,7 @@ fun SpecialistDetailScreen(
                                         .data(user.photoBytes)
                                         .crossfade(true)
                                         .build(),
-                                    contentDescription = "Фото специалиста",
+                                    contentDescription = "Фото пользователя",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )

@@ -45,7 +45,7 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsViewModel
-import ru.alexandrros.petly.presentation.specialists.SpecialistDetailViewModel
+import ru.alexandrros.petly.users.UserDetailViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.userpets.AddEditPetViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
@@ -154,9 +154,9 @@ val appModule = module {
 
     viewModel { SpecialistListViewModel(get()) }
 
-    viewModel { (specialistId: String) ->
-        SpecialistDetailViewModel(
-            specialistId = specialistId,
+    viewModel { (userId: String) ->
+        UserDetailViewModel(
+            userId = userId,
             getUserByIdUseCase = get()
         )
     }
