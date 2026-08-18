@@ -8,10 +8,12 @@ import org.koin.dsl.module
 import ru.alexandrros.petly.data.repository.FirebasePetRepository
 import ru.alexandrros.petly.data.repository.FirebaseRequestRepository
 import ru.alexandrros.petly.data.repository.FirebaseUserRepository
+import ru.alexandrros.petly.data.repository.MockUserRatingRepository
 import ru.alexandrros.petly.data.repository.ThemeRepositoryImpl
 import ru.alexandrros.petly.domain.repository.PetRepository
 import ru.alexandrros.petly.domain.repository.RequestRepository
 import ru.alexandrros.petly.domain.repository.ThemeRepository
+import ru.alexandrros.petly.domain.repository.UserRatingRepository
 import ru.alexandrros.petly.domain.repository.UserRepository
 import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
 import ru.alexandrros.petly.domain.usecase.AddPetUseCase
@@ -27,6 +29,8 @@ import ru.alexandrros.petly.domain.usecase.GetRequestByIdUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestsByCreatorUseCase
 import ru.alexandrros.petly.domain.usecase.GetThemeModeUseCase
 import ru.alexandrros.petly.domain.usecase.GetUserByIdUseCase
+import ru.alexandrros.petly.domain.usecase.GetUserRatingUseCase
+import ru.alexandrros.petly.domain.usecase.GetUserReviewsUseCase
 import ru.alexandrros.petly.domain.usecase.IsUserLoggedInUseCase
 import ru.alexandrros.petly.domain.usecase.LoginUseCase
 import ru.alexandrros.petly.domain.usecase.LogoutUseCase
@@ -75,6 +79,8 @@ val appModule = module {
         ThemeRepositoryImpl(androidContext())
     }
 
+    single<UserRatingRepository> { MockUserRatingRepository() }
+
     // ---------- Use cases ----------
 
     factory { LoginUseCase(get()) }
@@ -106,6 +112,9 @@ val appModule = module {
     factory { GetAllSpecialistsUseCase(get()) }
     factory { GetThemeModeUseCase(get()) }
     factory { SetThemeModeUseCase(get()) }
+
+    factory { GetUserRatingUseCase(get()) }
+    factory { GetUserReviewsUseCase(get()) }
 
     // ---------- ViewModels ----------
 
@@ -157,7 +166,9 @@ val appModule = module {
     viewModel { (userId: String) ->
         UserDetailViewModel(
             userId = userId,
-            getUserByIdUseCase = get()
+            getUserByIdUseCase = get(),
+            getUserRatingUseCase = get(),
+            getUserReviewsUseCase = get()
         )
     }
 }

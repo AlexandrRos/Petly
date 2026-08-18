@@ -220,7 +220,10 @@ fun MainScreen(
                                 popUpTo(0) { inclusive = true }
                             }
                         },
-                        onEditProfile = { nestedNavController.navigate(Screen.EditProfile.route) }
+                        onEditProfile = { nestedNavController.navigate(Screen.EditProfile.route) },
+                        onViewProfile = { userId ->
+                            nestedNavController.navigate(Screen.UserDetail.createRoute(userId))
+                        }
                     )
                 }
 

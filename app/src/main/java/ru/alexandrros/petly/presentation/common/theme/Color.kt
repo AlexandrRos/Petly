@@ -60,3 +60,6 @@ val BackgroundDark = Color(0xFF1C1B1F)      // near‑black, not pure black
 val OnBackgroundDark = Color.White
 val SurfaceDark = Color(0xFF1C1B1F)
 val OnSurfaceDark = Color.White
+
+// Reviews star color
+val ReviewStarColor = Color(0xFFFFC107)
