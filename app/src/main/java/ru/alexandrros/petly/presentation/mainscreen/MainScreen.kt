@@ -20,7 +20,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -80,6 +84,22 @@ fun MainScreen(
         }
     }
 
+    // Route of the screen currently visible in the nested NavHost
+    val currentBackStackEntry by nestedNavController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+
+    // Tracks the selected bottom tab separately from the current route
+    // The same screens can be opened from different tabs,
+    // so currentRoute alone can't determine which tab is active
+    var activeTabRoute by remember { mutableStateOf(Screen.Pets.route) }
+
+    // Update activeTabRoute when user lands on root screen without clicking tab
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != null && currentRoute in rootRoutes) {
+            activeTabRoute = currentRoute
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -88,51 +108,45 @@ fun MainScreen(
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = NavigationBarDefaults.Elevation
             ) {
-                val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-
-                // Determine which parent tab the current route belongs to
-                fun isTabSelected(tab: Screen): Boolean = when (tab) {
-                    Screen.Pets -> currentRoute in setOf(
-                        Screen.Pets.route,
-                        Screen.PetDetail.route,
-                        Screen.AddPet.route,
-                        Screen.EditPet.route
-                    )
-                    Screen.Requests -> currentRoute in setOf(
-                        Screen.Requests.route,
-                        Screen.RequestDetail.route
-                    )
-                    Screen.Specialists -> currentRoute in setOf(
-                        Screen.Specialists.route,
-                        Screen.SpecialistDetail.route
-                    )
-                    Screen.Profile -> currentRoute in setOf(
-                        Screen.Profile.route,
-                        Screen.EditProfile.route
-                    )
-                    else -> currentRoute == tab.route
-                }
+                val navBackStackEntry = nestedNavController.currentBackStackEntry
 
                 bottomNavItems.forEach { tab ->
                     NavigationBarItem(
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label) },
-                        selected = isTabSelected(tab.screen),
+                        selected = activeTabRoute == tab.screen.route,
                         onClick = {
-                            // If already on the root of this tab -> do nothing
+                            val currentRoute = navBackStackEntry?.destination?.route
+
+                            // Already on the root of this tab -> do nothing
                             if (currentRoute == tab.screen.route) {
                                 return@NavigationBarItem
                             }
-                            // If on a sub-screen of this tab -> pop to root
-                            else if (isTabSelected(tab.screen)) {
-                                nestedNavController.popBackStack(
+
+                            // If the current tab is the selected one (user is on a sub-screen of this tab)
+                            if (activeTabRoute == tab.screen.route) {
+                                // Try to pop to the tab root
+                                val popped = nestedNavController.popBackStack(
                                     tab.screen.route,
                                     inclusive = false
                                 )
-                            }
-                            // Otherwise switch to a different tab (save/restore state)
-                            else {
+                                if (!popped) {
+                                    // Root not on the back stack, navigate as a new tab
+                                    nestedNavController.navigate(tab.screen.route) {
+                                        popUpTo(nestedNavController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                    // After navigation, activeTabRoute is already this tab
+                                }
+                            } else {
+                                // Switching to a different tab
+                                // Set active tab to the clicked tab before navigation,
+                                // because restored tab may have sub-screens
+                                activeTabRoute = tab.screen.route
+
                                 nestedNavController.navigate(tab.screen.route) {
                                     popUpTo(nestedNavController.graph.findStartDestination().id) {
                                         saveState = true
