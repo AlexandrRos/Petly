@@ -46,7 +46,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,7 +58,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import ru.alexandrros.petly.domain.model.User
@@ -76,14 +74,13 @@ import ru.alexandrros.petly.presentation.common.toYearsWord
 fun RequestDetailScreen(
     requestId: String,
     onBackClick: () -> Unit,
-    onSpecialistClick: (specialistId: String) -> Unit,
+    onUserClick: (userId: String) -> Unit,
     viewModel: RequestDetailViewModel = koinViewModel(
         parameters = { parametersOf(requestId) }
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val contentInsets = rememberContentInsets()
 
@@ -158,7 +155,10 @@ fun RequestDetailScreen(
         }
     ) { padding ->
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
             return@Scaffold
@@ -302,7 +302,10 @@ fun RequestDetailScreen(
 
         val req = uiState.request
         if (req == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("Заявка не найдена", style = MaterialTheme.typography.bodyLarge)
             }
             return@Scaffold
@@ -386,9 +389,7 @@ fun RequestDetailScreen(
                             SectionCard(
                                 title = "Владелец",
                                 onClick = {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
-                                    }
+                                    onUserClick(req.creatorUserId)
                                 }
                             ) {
                                 if (ownerUser == null) {
@@ -404,9 +405,7 @@ fun RequestDetailScreen(
                                     UserRow(
                                         user = ownerUser,
                                         onClick = {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
-                                            }
+                                            onUserClick(req.creatorUserId)
                                         },
                                         avatarSize = 40.dp,
                                         label = null,
@@ -485,7 +484,7 @@ fun RequestDetailScreen(
                                     onClick = if (isSpecialistCurrentUser) {
                                         {}
                                     } else {
-                                        { onSpecialistClick(req.specialistUserId) }
+                                        { onUserClick(req.specialistUserId) }
                                     },
                                     avatarSize = 40.dp,
                                     label = specialist.specialist,
@@ -562,7 +561,7 @@ fun RequestDetailScreen(
                         title = "Специалист",
                         onClick = {
                             if (!isSpecialistCurrentUser) {
-                                onSpecialistClick(req.specialistUserId)
+                                onUserClick(req.specialistUserId)
                             }
                         }
                     ) {
@@ -571,7 +570,7 @@ fun RequestDetailScreen(
                             onClick = if (isSpecialistCurrentUser) {
                                 {}
                             } else {
-                                { onSpecialistClick(req.specialistUserId) }
+                                { onUserClick(req.specialistUserId) }
                             },
                             avatarSize = 48.dp,
                             label = specialist.specialist,
@@ -587,9 +586,7 @@ fun RequestDetailScreen(
                 SectionCard(
                     title = "Владелец",
                     onClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
-                        }
+                        onUserClick(req.creatorUserId)
                     }
                 ) {
                     if (ownerUser == null) {
@@ -605,9 +602,7 @@ fun RequestDetailScreen(
                         UserRow(
                             user = ownerUser,
                             onClick = {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Профиль владельца скоро будет доступен")
-                                }
+                                onUserClick(req.creatorUserId)
                             },
                             avatarSize = 48.dp,
                             label = null,
@@ -669,7 +664,10 @@ fun RequestDetailScreen(
                 }
             } ?: run {
                 SectionCard(title = "Информация о питомце") {
-                    Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 }
