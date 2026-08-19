@@ -7,20 +7,22 @@ import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 import ru.alexandrros.petly.data.repository.FirebasePetRepository
 import ru.alexandrros.petly.data.repository.FirebaseRequestRepository
+import ru.alexandrros.petly.data.repository.FirebaseReviewRepository
 import ru.alexandrros.petly.data.repository.FirebaseUserRepository
-import ru.alexandrros.petly.data.repository.MockUserRatingRepository
 import ru.alexandrros.petly.data.repository.ThemeRepositoryImpl
 import ru.alexandrros.petly.domain.repository.PetRepository
 import ru.alexandrros.petly.domain.repository.RequestRepository
+import ru.alexandrros.petly.domain.repository.ReviewRepository
 import ru.alexandrros.petly.domain.repository.ThemeRepository
-import ru.alexandrros.petly.domain.repository.UserRatingRepository
 import ru.alexandrros.petly.domain.repository.UserRepository
 import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
 import ru.alexandrros.petly.domain.usecase.AddPetUseCase
 import ru.alexandrros.petly.domain.usecase.CheckExistingRequestUseCase
 import ru.alexandrros.petly.domain.usecase.CreateRequestUseCase
+import ru.alexandrros.petly.domain.usecase.CreateReviewUseCase
 import ru.alexandrros.petly.domain.usecase.DeletePetUseCase
 import ru.alexandrros.petly.domain.usecase.DeleteRequestUseCase
+import ru.alexandrros.petly.domain.usecase.DeleteReviewUseCase
 import ru.alexandrros.petly.domain.usecase.GetAllRequestsUseCase
 import ru.alexandrros.petly.domain.usecase.GetAllSpecialistsUseCase
 import ru.alexandrros.petly.domain.usecase.GetPetByIdUseCase
@@ -40,6 +42,7 @@ import ru.alexandrros.petly.domain.usecase.ObserveUserPetsUseCase
 import ru.alexandrros.petly.domain.usecase.RegisterUseCase
 import ru.alexandrros.petly.domain.usecase.SetThemeModeUseCase
 import ru.alexandrros.petly.domain.usecase.UpdatePetUseCase
+import ru.alexandrros.petly.domain.usecase.UpdateReviewUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateSpecialistUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserPhotoUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateUserProfileUseCase
@@ -49,11 +52,11 @@ import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsViewModel
-import ru.alexandrros.petly.users.UserDetailViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.userpets.AddEditPetViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
 import ru.alexandrros.petly.presentation.userpets.PetsViewModel
+import ru.alexandrros.petly.users.UserDetailViewModel
 
 val appModule = module {
 
@@ -79,7 +82,9 @@ val appModule = module {
         ThemeRepositoryImpl(androidContext())
     }
 
-    single<UserRatingRepository> { MockUserRatingRepository() }
+    single<ReviewRepository> {
+        FirebaseReviewRepository()
+    }
 
     // ---------- Use cases ----------
 
@@ -115,6 +120,9 @@ val appModule = module {
 
     factory { GetUserRatingUseCase(get()) }
     factory { GetUserReviewsUseCase(get()) }
+    factory { CreateReviewUseCase(get()) }
+    factory { UpdateReviewUseCase(get()) }
+    factory { DeleteReviewUseCase(get()) }
 
     // ---------- ViewModels ----------
 
@@ -168,7 +176,11 @@ val appModule = module {
             userId = userId,
             getUserByIdUseCase = get(),
             getUserRatingUseCase = get(),
-            getUserReviewsUseCase = get()
+            getUserReviewsUseCase = get(),
+            createReviewUseCase = get(),
+            updateReviewUseCase = get(),
+            deleteReviewUseCase = get(),
+            observeCurrentUserUseCase = get()
         )
     }
 }

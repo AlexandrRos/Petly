@@ -2,11 +2,12 @@ package ru.alexandrros.petly.domain.usecase
 
 import kotlinx.coroutines.flow.Flow
 import ru.alexandrros.petly.domain.model.UserRating
-import ru.alexandrros.petly.domain.repository.UserRatingRepository
+import ru.alexandrros.petly.domain.repository.ReviewRepository
 
 class GetUserRatingUseCase(
-    private val repository: UserRatingRepository
+    private val reviewRepository: ReviewRepository
 ) {
-    operator fun invoke(userId: String): Flow<UserRating> =
-        repository.getRatingByUserId(userId)
+    operator fun invoke(uid: String): Flow<UserRating?> {
+        return reviewRepository.observeUserRating(uid)
+    }
 }
