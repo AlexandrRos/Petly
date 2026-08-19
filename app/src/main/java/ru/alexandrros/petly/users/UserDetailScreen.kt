@@ -22,16 +22,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -96,6 +103,15 @@ fun UserDetailScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
+        },
+        floatingActionButton = {
+            if (uiState.user != null && uiState.user!!.uid != uiState.currentUserId) {
+                FloatingActionButton(
+                    onClick = { viewModel.showAddReviewForm() }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Добавить отзыв")
+                }
+            }
         }
     ) { padding ->
         when {
@@ -300,12 +316,36 @@ fun UserDetailScreen(
                         }
                     } else {
                         items(filteredReviews, key = { it.id }) { review ->
-                            ReviewItem(review)
+                            val canEdit = review.reviewerId == uiState.currentUserId
+                            val canDelete = review.reviewerId == uiState.currentUserId
+                            ReviewItem(
+                                review = review,
+                                canEdit = canEdit,
+                                canDelete = canDelete,
+                                onEdit = { viewModel.showEditReviewForm(review) },
+                                onDelete = { viewModel.deleteReview(review.id) }
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    if (uiState.isReviewFormVisible) {
+        val canSelectType = uiState.user?.specialist != null
+        ReviewFormDialog(
+            rating = uiState.reviewFormRating,
+            comment = uiState.reviewFormComment,
+            selectedType = uiState.reviewFormType,
+            canSelectType = canSelectType,
+            isEditing = uiState.editingReviewId != null,
+            onRatingChange = viewModel::updateReviewFormRating,
+            onCommentChange = viewModel::updateReviewFormComment,
+            onTypeChange = viewModel::updateReviewFormType,
+            onDismiss = viewModel::hideReviewForm,
+            onSubmit = viewModel::submitReview
+        )
     }
 }
 
@@ -416,7 +456,13 @@ private fun ReviewTypeSelector(
 }
 
 @Composable
-private fun ReviewItem(review: Review) {
+private fun ReviewItem(
+    review: Review,
+    canEdit: Boolean,
+    canDelete: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -460,6 +506,110 @@ private fun ReviewItem(review: Review) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (canEdit || canDelete) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (canEdit) {
+                        TextButton(
+                            onClick = onEdit,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Редактировать",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Редактировать")
+                        }
+                    }
+                    if (canDelete) {
+                        TextButton(
+                            onClick = onDelete,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Удалить",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Удалить")
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun ReviewFormDialog(
+    rating: Int,
+    comment: String,
+    selectedType: ReviewType,
+    canSelectType: Boolean,
+    isEditing: Boolean,
+    onRatingChange: (Int) -> Unit,
+    onCommentChange: (String) -> Unit,
+    onTypeChange: (ReviewType) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isEditing) "Изменить отзыв" else "Новый отзыв") },
+        text = {
+            Column {
+                Text("Оценка")
+                Row {
+                    repeat(5) { index ->
+                        IconButton(onClick = { onRatingChange(index + 1) }) {
+                            Icon(
+                                imageVector = if (index < rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = null,
+                                tint = if (index < rating) ReviewStarColor else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                if (canSelectType) {
+                    ReviewTypeSelector(
+                        selectedType = selectedType,
+                        onTypeSelected = onTypeChange
+                    )
+                } else {
+                    Text(
+                        text = "Как владелец питомца",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = onCommentChange,
+                    label = { Text("Комментарий") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onSubmit,
+                enabled = rating > 0 && comment.isNotBlank()
+            ) {
+                Text(if (isEditing) "Сохранить" else "Отправить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
