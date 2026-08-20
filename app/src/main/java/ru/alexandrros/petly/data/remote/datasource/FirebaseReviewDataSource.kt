@@ -21,13 +21,16 @@ class FirebaseReviewDataSource {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val reviewsCollection = firestore.collection("reviews")
+    private val usersCollection = firestore.collection("users")
 
     suspend fun saveReview(review: ReviewDto): String {
+        validateReviewType(review)
         val docRef = reviewsCollection.add(review).await()
         return docRef.id
     }
 
     suspend fun updateReview(reviewId: String, review: ReviewDto) {
+        validateReviewType(review)
         reviewsCollection.document(reviewId)
             .set(review, SetOptions.merge())
             .await()
@@ -68,5 +71,36 @@ class FirebaseReviewDataSource {
             }
         }
         awaitClose { listener.remove() }
+    }
+
+    private suspend fun isUserSpecialist(uid: String): Boolean {
+        return try {
+            val userDoc = usersCollection.document(uid).get().await()
+            val specialist = userDoc.getString("specialist")
+            !specialist.isNullOrBlank() && !specialist.equals("None", ignoreCase = true)
+        } catch (e: Exception) {
+            Log.e("FirebaseReviewDS", "Error checking specialist status", e)
+            false
+        }
+    }
+
+    /**
+     * Validates that the review type is allowed for the given user.
+     *
+     * @throws IllegalArgumentException if the review type is AS_SPECIALIST
+     *         but the reviewed user is not a specialist.
+     */
+    private suspend fun validateReviewType(review: ReviewDto) {
+        // Only reviews of type AS_SPECIALIST need validation
+        if (review.type != ReviewType.AS_SPECIALIST.name) {
+            return
+        }
+
+        val isSpecialist = isUserSpecialist(review.reviewedUserId)
+        if (!isSpecialist) {
+            throw IllegalArgumentException(
+                "User ${review.reviewedUserId} is not a specialist; cannot save review as AS_SPECIALIST"
+            )
+        }
     }
 }
