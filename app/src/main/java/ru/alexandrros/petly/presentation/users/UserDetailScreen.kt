@@ -62,6 +62,7 @@ import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedFilterChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
+import ru.alexandrros.petly.presentation.common.isSpecialistValue
 import ru.alexandrros.petly.presentation.common.theme.ReviewStarColor
 import java.util.Locale
 
@@ -151,7 +152,14 @@ fun UserDetailScreen(
 
             uiState.user != null -> {
                 val user = uiState.user!!
-                val isSpecialist = user.specialist != null
+                val isSpecialist = user.specialist.isSpecialistValue()
+
+                // Non-specialists can only have AS_OWNER reviews
+                val displayReviewType = if (isSpecialist) {
+                    uiState.selectedReviewType
+                } else {
+                    ReviewType.AS_OWNER
+                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -208,7 +216,7 @@ fun UserDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = user.specialist ?: "Не является специалистом",
+                                        text = if (isSpecialist) user.specialist ?: "" else "Не является специалистом",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = if (isSpecialist)
                                             MaterialTheme.colorScheme.primary
@@ -266,7 +274,7 @@ fun UserDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = user.specialist ?: "Не является специалистом",
+                                text = if (isSpecialist) user.specialist ?: "" else "Не является специалистом",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = if (isSpecialist)
                                     MaterialTheme.colorScheme.primary
@@ -289,7 +297,7 @@ fun UserDetailScreen(
                         SectionCard(title = "Отзывы") {
                             if (isSpecialist) {
                                 ReviewTypeSelector(
-                                    selectedType = uiState.selectedReviewType,
+                                    selectedType = displayReviewType,
                                     onTypeSelected = { type ->
                                         viewModel.setReviewType(type)
                                     }
@@ -304,7 +312,7 @@ fun UserDetailScreen(
                         }
                     }
 
-                    val filteredReviews = uiState.reviews.filter { it.type == uiState.selectedReviewType }
+                    val filteredReviews = uiState.reviews.filter { it.type == displayReviewType }
                     if (filteredReviews.isEmpty()) {
                         item {
                             Text(
@@ -333,11 +341,11 @@ fun UserDetailScreen(
     }
 
     if (uiState.isReviewFormVisible) {
-        val canSelectType = uiState.user?.specialist != null
+        val canSelectType = uiState.user?.specialist.isSpecialistValue()
         ReviewFormDialog(
             rating = uiState.reviewFormRating,
             comment = uiState.reviewFormComment,
-            selectedType = uiState.reviewFormType,
+            selectedType = if (canSelectType) uiState.reviewFormType else ReviewType.AS_OWNER,
             canSelectType = canSelectType,
             isEditing = uiState.editingReviewId != null,
             onRatingChange = viewModel::updateReviewFormRating,
@@ -558,6 +566,8 @@ private fun ReviewFormDialog(
     onDismiss: () -> Unit,
     onSubmit: () -> Unit
 ) {
+    val effectiveSelectedType = if (canSelectType) selectedType else ReviewType.AS_OWNER
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isEditing) "Изменить отзыв" else "Новый отзыв") },
@@ -578,7 +588,7 @@ private fun ReviewFormDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (canSelectType) {
                     ReviewTypeSelector(
-                        selectedType = selectedType,
+                        selectedType = effectiveSelectedType,
                         onTypeSelected = onTypeChange
                     )
                 } else {

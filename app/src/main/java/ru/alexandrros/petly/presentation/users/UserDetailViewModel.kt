@@ -18,6 +18,7 @@ import ru.alexandrros.petly.domain.usecase.GetUserRatingUseCase
 import ru.alexandrros.petly.domain.usecase.GetUserReviewsUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 import ru.alexandrros.petly.domain.usecase.UpdateReviewUseCase
+import ru.alexandrros.petly.presentation.common.isSpecialistValue
 
 class UserDetailViewModel(
     private val userId: String,
@@ -62,7 +63,7 @@ class UserDetailViewModel(
                             it.copy(isLoading = false, errorMessage = "Пользователь не найден")
                         }
                     } else {
-                        val isSpecialist = user.specialist != null
+                        val isSpecialist = user.specialist.isSpecialistValue()
                         val newSelectedType = if (isSpecialist) {
                             if (_uiState.value.selectedReviewType == ReviewType.AS_OWNER ||
                                 _uiState.value.selectedReviewType == ReviewType.AS_SPECIALIST
@@ -114,25 +115,27 @@ class UserDetailViewModel(
     }
 
     fun showAddReviewForm() {
+        val isSpecialist = _uiState.value.user?.specialist.isSpecialistValue()
         _uiState.update {
             it.copy(
                 isReviewFormVisible = true,
                 editingReviewId = null,
                 reviewFormRating = 0,
                 reviewFormComment = "",
-                reviewFormType = if (it.user?.specialist != null) ReviewType.AS_SPECIALIST else ReviewType.AS_OWNER
+                reviewFormType = if (isSpecialist) ReviewType.AS_SPECIALIST else ReviewType.AS_OWNER
             )
         }
     }
 
     fun showEditReviewForm(review: Review) {
+        val isSpecialist = _uiState.value.user?.specialist.isSpecialistValue()
         _uiState.update {
             it.copy(
                 isReviewFormVisible = true,
                 editingReviewId = review.id,
                 reviewFormRating = review.rating,
                 reviewFormComment = review.comment,
-                reviewFormType = review.type
+                reviewFormType = if (isSpecialist) review.type else ReviewType.AS_OWNER
             )
         }
     }
@@ -160,6 +163,15 @@ class UserDetailViewModel(
 
         if (rating == 0 || comment.isEmpty() || state.currentUserId.isEmpty()) return
 
+        val isReviewedUserSpecialist = state.user?.specialist.isSpecialistValue()
+
+        // Force type to AS_OWNER if the reviewed user is not a specialist
+        val safeReviewType = if (!isReviewedUserSpecialist && state.reviewFormType == ReviewType.AS_SPECIALIST) {
+            ReviewType.AS_OWNER
+        } else {
+            state.reviewFormType
+        }
+
         viewModelScope.launch {
             val review = Review(
                 reviewerId = state.currentUserId,
@@ -167,18 +179,20 @@ class UserDetailViewModel(
                 reviewedUserId = userId,
                 rating = rating,
                 comment = comment,
-                type = state.reviewFormType,
+                type = safeReviewType,
                 timestamp = System.currentTimeMillis()
             )
+
             val result = if (state.editingReviewId == null) {
                 createReviewUseCase(review)
             } else {
                 updateReviewUseCase(state.editingReviewId, review)
             }
+
             if (result.isSuccess) {
                 _uiState.update { it.copy(isReviewFormVisible = false, editingReviewId = null) }
             } else {
-                Log.d("UserDetailViewModel","unable to create review")
+                Log.d("UserDetailViewModel", "unable to create review")
             }
         }
     }
