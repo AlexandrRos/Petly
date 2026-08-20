@@ -1,4 +1,4 @@
-package ru.alexandrros.petly.users
+package ru.alexandrros.petly.presentation.users
 
 import android.util.Log
 import androidx.lifecycle.ViewModel

@@ -1,4 +1,4 @@
-package ru.alexandrros.petly.users
+package ru.alexandrros.petly.presentation.users
 
 import ru.alexandrros.petly.domain.model.Review
 import ru.alexandrros.petly.domain.model.ReviewType
