@@ -56,7 +56,7 @@ import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
 import ru.alexandrros.petly.presentation.userpets.AddEditPetViewModel
 import ru.alexandrros.petly.presentation.userpets.PetDetailViewModel
 import ru.alexandrros.petly.presentation.userpets.PetsViewModel
-import ru.alexandrros.petly.users.UserDetailViewModel
+import ru.alexandrros.petly.presentation.users.UserDetailViewModel
 
 val appModule = module {
 

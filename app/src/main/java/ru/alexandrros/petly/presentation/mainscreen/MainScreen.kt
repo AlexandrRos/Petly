@@ -41,7 +41,7 @@ import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileScreen
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
-import ru.alexandrros.petly.users.UserDetailScreen
+import ru.alexandrros.petly.presentation.users.UserDetailScreen
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
