@@ -16,7 +16,10 @@ data class UserDetailUiState(
     val currentUserName: String = "",
     val isReviewFormVisible: Boolean = false,
     val editingReviewId: String? = null,
+    val editingReviewOriginalType: ReviewType? = null,
     val reviewFormRating: Int = 0,
     val reviewFormComment: String = "",
-    val reviewFormType: ReviewType = ReviewType.AS_SPECIALIST
+    val reviewFormType: ReviewType = ReviewType.AS_SPECIALIST,
+    val hasReviewedAsOwner: Boolean = false,
+    val hasReviewedAsSpecialist: Boolean = false
 )

@@ -17,7 +17,8 @@ fun OutlinedFilterChip(
     onClick: () -> Unit = {},
     selected: Boolean,
     labelModifier: Modifier = Modifier,
-    textAlign: TextAlign? = null
+    textAlign: TextAlign? = null,
+    enabled: Boolean = true
 ) {
     FilterChip(
         onClick = onClick,
@@ -38,6 +39,7 @@ fun OutlinedFilterChip(
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primary,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-        )
+        ),
+        enabled = enabled
     )
 }

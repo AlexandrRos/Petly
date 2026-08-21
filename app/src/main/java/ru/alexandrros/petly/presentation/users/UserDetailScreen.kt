@@ -1,6 +1,7 @@
 package ru.alexandrros.petly.presentation.users
 
 import android.content.res.Configuration
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -106,11 +108,20 @@ fun UserDetailScreen(
             )
         },
         floatingActionButton = {
-            if (uiState.user != null && uiState.user!!.uid != uiState.currentUserId) {
-                FloatingActionButton(
-                    onClick = { viewModel.showAddReviewForm() }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Добавить отзыв")
+            val user = uiState.user
+            if (user != null && user.uid != uiState.currentUserId) {
+                val isSpecialist = user.specialist.isSpecialistValue()
+                val displayReviewType = if (isSpecialist) uiState.selectedReviewType else ReviewType.AS_OWNER
+                val hasCurrentUserReviewForType = when (displayReviewType) {
+                    ReviewType.AS_OWNER -> uiState.hasReviewedAsOwner
+                    ReviewType.AS_SPECIALIST -> uiState.hasReviewedAsSpecialist
+                }
+                if (!hasCurrentUserReviewForType) {
+                    FloatingActionButton(
+                        onClick = { viewModel.showAddReviewForm() }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Добавить отзыв")
+                    }
                 }
             }
         }
@@ -300,7 +311,8 @@ fun UserDetailScreen(
                                     selectedType = displayReviewType,
                                     onTypeSelected = { type ->
                                         viewModel.setReviewType(type)
-                                    }
+                                    },
+                                    disabledTypes = emptySet() // main selector is never disabled
                                 )
                             } else {
                                 Text(
@@ -313,7 +325,12 @@ fun UserDetailScreen(
                     }
 
                     val filteredReviews = uiState.reviews.filter { it.type == displayReviewType }
-                    if (filteredReviews.isEmpty()) {
+                    val sortedReviews = filteredReviews.sortedWith(
+                        compareByDescending<Review> { it.reviewerId == uiState.currentUserId }
+                            .thenByDescending { it.timestamp }
+                    )
+
+                    if (sortedReviews.isEmpty()) {
                         item {
                             Text(
                                 text = "Отзывов пока нет",
@@ -323,13 +340,12 @@ fun UserDetailScreen(
                             )
                         }
                     } else {
-                        items(filteredReviews, key = { it.id }) { review ->
-                            val canEdit = review.reviewerId == uiState.currentUserId
-                            val canDelete = review.reviewerId == uiState.currentUserId
+                        items(sortedReviews, key = { it.id }) { review ->
                             ReviewItem(
                                 review = review,
-                                canEdit = canEdit,
-                                canDelete = canDelete,
+                                canEdit = review.reviewerId == uiState.currentUserId,
+                                canDelete = review.reviewerId == uiState.currentUserId,
+                                isCurrentUser = review.reviewerId == uiState.currentUserId,
                                 onEdit = { viewModel.showEditReviewForm(review) },
                                 onDelete = { viewModel.deleteReview(review.id) }
                             )
@@ -342,11 +358,32 @@ fun UserDetailScreen(
 
     if (uiState.isReviewFormVisible) {
         val canSelectType = uiState.user?.specialist.isSpecialistValue()
+        val disabledReviewTypes = remember(
+            uiState.hasReviewedAsOwner,
+            uiState.hasReviewedAsSpecialist,
+            uiState.editingReviewId,
+            uiState.editingReviewOriginalType
+        ) {
+            buildSet {
+                if (uiState.editingReviewId == null) {
+                    // Adding a new review: disable types already reviewed
+                    if (uiState.hasReviewedAsOwner) add(ReviewType.AS_OWNER)
+                    if (uiState.hasReviewedAsSpecialist) add(ReviewType.AS_SPECIALIST)
+                } else {
+                    // Editing: disable the other type if it already exists
+                    val originalType = uiState.editingReviewOriginalType
+                    if (uiState.hasReviewedAsOwner && originalType != ReviewType.AS_OWNER) add(ReviewType.AS_OWNER)
+                    if (uiState.hasReviewedAsSpecialist && originalType != ReviewType.AS_SPECIALIST) add(ReviewType.AS_SPECIALIST)
+                }
+            }
+        }
+
         ReviewFormDialog(
             rating = uiState.reviewFormRating,
             comment = uiState.reviewFormComment,
             selectedType = if (canSelectType) uiState.reviewFormType else ReviewType.AS_OWNER,
             canSelectType = canSelectType,
+            disabledTypes = disabledReviewTypes,
             isEditing = uiState.editingReviewId != null,
             onRatingChange = viewModel::updateReviewFormRating,
             onCommentChange = viewModel::updateReviewFormComment,
@@ -438,7 +475,8 @@ private fun RatingSection(rating: UserRating?) {
 @Composable
 private fun ReviewTypeSelector(
     selectedType: ReviewType,
-    onTypeSelected: (ReviewType) -> Unit
+    onTypeSelected: (ReviewType) -> Unit,
+    disabledTypes: Set<ReviewType> = emptySet()
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -450,7 +488,8 @@ private fun ReviewTypeSelector(
             onClick = { onTypeSelected(ReviewType.AS_SPECIALIST) },
             modifier = Modifier.weight(1f),
             labelModifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            enabled = ReviewType.AS_SPECIALIST !in disabledTypes
         )
         OutlinedFilterChip(
             text = "Как владелец",
@@ -458,7 +497,8 @@ private fun ReviewTypeSelector(
             onClick = { onTypeSelected(ReviewType.AS_OWNER) },
             modifier = Modifier.weight(1f),
             labelModifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            enabled = ReviewType.AS_OWNER !in disabledTypes
         )
     }
 }
@@ -468,14 +508,20 @@ private fun ReviewItem(
     review: Review,
     canEdit: Boolean,
     canDelete: Boolean,
+    isCurrentUser: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        tonalElevation = 2.dp
+        color = if (isCurrentUser) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        },
+        tonalElevation = 2.dp,
+        border = if (isCurrentUser) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -485,9 +531,9 @@ private fun ReviewItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = review.reviewerName,
+                    text = if (isCurrentUser) "${review.reviewerName} (Ваш отзыв)" else review.reviewerName,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(review.rating) {
@@ -559,6 +605,7 @@ private fun ReviewFormDialog(
     comment: String,
     selectedType: ReviewType,
     canSelectType: Boolean,
+    disabledTypes: Set<ReviewType>,
     isEditing: Boolean,
     onRatingChange: (Int) -> Unit,
     onCommentChange: (String) -> Unit,
@@ -589,7 +636,8 @@ private fun ReviewFormDialog(
                 if (canSelectType) {
                     ReviewTypeSelector(
                         selectedType = effectiveSelectedType,
-                        onTypeSelected = onTypeChange
+                        onTypeSelected = onTypeChange,
+                        disabledTypes = disabledTypes
                     )
                 } else {
                     Text(
