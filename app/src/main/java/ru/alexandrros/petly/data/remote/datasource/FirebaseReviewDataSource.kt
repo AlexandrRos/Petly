@@ -1,7 +1,6 @@
 package ru.alexandrros.petly.data.remote.datasource
 
 import android.util.Log
-import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
@@ -15,7 +14,6 @@ import kotlinx.coroutines.tasks.await
 import ru.alexandrros.petly.data.remote.model.ReviewDto
 import ru.alexandrros.petly.domain.model.ReviewType
 import ru.alexandrros.petly.domain.model.UserRating
-import kotlin.collections.mapNotNull
 
 class FirebaseReviewDataSource {
 
@@ -25,12 +23,14 @@ class FirebaseReviewDataSource {
 
     suspend fun saveReview(review: ReviewDto): String {
         validateReviewType(review)
+        ensureUniqueReview(review.reviewerId, review.reviewedUserId, review.type, excludeDocId = null)
         val docRef = reviewsCollection.add(review).await()
         return docRef.id
     }
 
     suspend fun updateReview(reviewId: String, review: ReviewDto) {
         validateReviewType(review)
+        ensureUniqueReview(review.reviewerId, review.reviewedUserId, review.type, excludeDocId = reviewId)
         reviewsCollection.document(reviewId)
             .set(review, SetOptions.merge())
             .await()
@@ -47,7 +47,7 @@ class FirebaseReviewDataSource {
         }
         return query.snapshots()
             .map { snapshot: QuerySnapshot ->
-                snapshot.documents.mapNotNull { doc: DocumentSnapshot ->
+                snapshot.documents.mapNotNull { doc ->
                     doc.toObject<ReviewDto>()?.copy(documentId = doc.id)
                 }
             }
@@ -101,6 +101,30 @@ class FirebaseReviewDataSource {
             throw IllegalArgumentException(
                 "User ${review.reviewedUserId} is not a specialist; cannot save review as AS_SPECIALIST"
             )
+        }
+    }
+
+    /**
+     * Ensures that the current user does not already have a review of the given type
+     * for the target user.
+     *
+     * @throws IllegalStateException if a duplicate review exists.
+     */
+    private suspend fun ensureUniqueReview(
+        reviewerId: String,
+        reviewedUserId: String,
+        type: String,
+        excludeDocId: String?
+    ) {
+        val query = reviewsCollection
+            .whereEqualTo("reviewerId", reviewerId)
+            .whereEqualTo("reviewedUserId", reviewedUserId)
+            .whereEqualTo("type", type)
+
+        val snapshot = query.get().await()
+        val duplicateExists = snapshot.documents.any { it.id != excludeDocId }
+        if (duplicateExists) {
+            throw IllegalStateException("User $reviewerId already has a review of type $type for user $reviewedUserId")
         }
     }
 }
