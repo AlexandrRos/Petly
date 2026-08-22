@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,13 +29,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,9 +45,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -106,24 +111,6 @@ fun UserDetailScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
-        },
-        floatingActionButton = {
-            val user = uiState.user
-            if (user != null && user.uid != uiState.currentUserId) {
-                val isSpecialist = user.specialist.isSpecialistValue()
-                val displayReviewType = if (isSpecialist) uiState.selectedReviewType else ReviewType.AS_OWNER
-                val hasCurrentUserReviewForType = when (displayReviewType) {
-                    ReviewType.AS_OWNER -> uiState.hasReviewedAsOwner
-                    ReviewType.AS_SPECIALIST -> uiState.hasReviewedAsSpecialist
-                }
-                if (!hasCurrentUserReviewForType) {
-                    FloatingActionButton(
-                        onClick = { viewModel.showAddReviewForm() }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Добавить отзыв")
-                    }
-                }
-            }
         }
     ) { padding ->
         when {
@@ -172,7 +159,22 @@ fun UserDetailScreen(
                     ReviewType.AS_OWNER
                 }
 
+                // LazyListState and pending scroll index for smooth scrolling to forms
+                val listState = rememberLazyListState()
+                var pendingScrollIndex by remember { mutableStateOf<Int?>(null) }
+
+                // Trigger smooth scroll when the review form appears (add or edit)
+                LaunchedEffect(uiState.isReviewFormVisible) {
+                    if (uiState.isReviewFormVisible) {
+                        pendingScrollIndex?.let { index ->
+                            listState.animateScrollToItem(index)
+                            pendingScrollIndex = null
+                        }
+                    }
+                }
+
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
@@ -311,8 +313,7 @@ fun UserDetailScreen(
                                     selectedType = displayReviewType,
                                     onTypeSelected = { type ->
                                         viewModel.setReviewType(type)
-                                    },
-                                    disabledTypes = emptySet() // main selector is never disabled
+                                    }
                                 )
                             } else {
                                 Text(
@@ -325,72 +326,121 @@ fun UserDetailScreen(
                     }
 
                     val filteredReviews = uiState.reviews.filter { it.type == displayReviewType }
+                    val currentUserReviewOfType = filteredReviews.firstOrNull {
+                        it.reviewerId == uiState.currentUserId
+                    }
                     val sortedReviews = filteredReviews.sortedWith(
                         compareByDescending<Review> { it.reviewerId == uiState.currentUserId }
                             .thenByDescending { it.timestamp }
                     )
 
-                    if (sortedReviews.isEmpty()) {
+                    if (uiState.isCurrentUserLoading) {
                         item {
-                            Text(
-                                text = "Отзывов пока нет",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
                         }
                     } else {
-                        items(sortedReviews, key = { it.id }) { review ->
-                            ReviewItem(
-                                review = review,
-                                canEdit = review.reviewerId == uiState.currentUserId,
-                                canDelete = review.reviewerId == uiState.currentUserId,
-                                isCurrentUser = review.reviewerId == uiState.currentUserId,
-                                onEdit = { viewModel.showEditReviewForm(review) },
-                                onDelete = { viewModel.deleteReview(review.id) }
-                            )
+                        // Prevent self-review: only show form if viewing another user
+                        if (uiState.isReviewFormVisible &&
+                            uiState.editingReviewId == null &&
+                            user.uid != uiState.currentUserId
+                        ) {
+                            item {
+                                ReviewFormCard(
+                                    rating = uiState.reviewFormRating,
+                                    comment = uiState.reviewFormComment,
+                                    selectedType = displayReviewType,
+                                    isEditing = false,
+                                    isSubmitting = uiState.isSubmittingReview,
+                                    onRatingChange = viewModel::updateReviewFormRating,
+                                    onCommentChange = viewModel::updateReviewFormComment,
+                                    onCancel = viewModel::hideReviewForm,
+                                    onSubmit = viewModel::submitReview
+                                )
+                            }
                         }
+
+                        // If there is an existing review and form is not editing it, show it (or form if editing)
+                        if (currentUserReviewOfType != null) {
+                            val isEditingThisReview = uiState.isReviewFormVisible &&
+                                    uiState.editingReviewId == currentUserReviewOfType.id
+                            if (isEditingThisReview && user.uid != uiState.currentUserId) {
+                                item {
+                                    ReviewFormCard(
+                                        rating = uiState.reviewFormRating,
+                                        comment = uiState.reviewFormComment,
+                                        selectedType = displayReviewType,
+                                        isEditing = true,
+                                        isSubmitting = uiState.isSubmittingReview,
+                                        onRatingChange = viewModel::updateReviewFormRating,
+                                        onCommentChange = viewModel::updateReviewFormComment,
+                                        onCancel = viewModel::hideReviewForm,
+                                        onSubmit = viewModel::submitReview
+                                    )
+                                }
+                            } else {
+                                item(key = currentUserReviewOfType.id) {
+                                    ReviewItem(
+                                        review = currentUserReviewOfType,
+                                        canEdit = user.uid != uiState.currentUserId,
+                                        canDelete = user.uid != uiState.currentUserId,
+                                        isCurrentUser = true,
+                                        isDeleting = currentUserReviewOfType.id in uiState.deletingReviewIds,
+                                        onEdit = {
+                                            if (user.uid != uiState.currentUserId) {
+                                                // Capture the index of this review before switching to edit form
+                                                val index = listState.layoutInfo.visibleItemsInfo
+                                                    .firstOrNull { it.key == currentUserReviewOfType.id }
+                                                    ?.index
+                                                pendingScrollIndex = index
+                                                viewModel.showEditReviewForm(currentUserReviewOfType)
+                                            }
+                                        },
+                                        onDelete = {
+                                            if (user.uid != uiState.currentUserId) {
+                                                viewModel.deleteReview(currentUserReviewOfType.id)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        } else if (!uiState.isReviewFormVisible && user.uid != uiState.currentUserId) {
+                            // No review and no form: placeholder with add button
+                            item(key = "add_review_placeholder") {
+                                AddReviewPlaceholder(
+                                    onClick = {
+                                        val index = listState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { it.key == "add_review_placeholder" }
+                                            ?.index
+                                        pendingScrollIndex = index
+                                        viewModel.showAddReviewForm()
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    val otherReviews = sortedReviews.filter { it.id != currentUserReviewOfType?.id }
+                    items(otherReviews, key = { it.id }) { review ->
+                        ReviewItem(
+                            review = review,
+                            canEdit = false,
+                            canDelete = false,
+                            isCurrentUser = false,
+                            isDeleting = false,
+                            onEdit = {},
+                            onDelete = {}
+                        )
                     }
                 }
             }
         }
-    }
-
-    if (uiState.isReviewFormVisible) {
-        val canSelectType = uiState.user?.specialist.isSpecialistValue()
-        val disabledReviewTypes = remember(
-            uiState.hasReviewedAsOwner,
-            uiState.hasReviewedAsSpecialist,
-            uiState.editingReviewId,
-            uiState.editingReviewOriginalType
-        ) {
-            buildSet {
-                if (uiState.editingReviewId == null) {
-                    // Adding a new review: disable types already reviewed
-                    if (uiState.hasReviewedAsOwner) add(ReviewType.AS_OWNER)
-                    if (uiState.hasReviewedAsSpecialist) add(ReviewType.AS_SPECIALIST)
-                } else {
-                    // Editing: disable the other type if it already exists
-                    val originalType = uiState.editingReviewOriginalType
-                    if (uiState.hasReviewedAsOwner && originalType != ReviewType.AS_OWNER) add(ReviewType.AS_OWNER)
-                    if (uiState.hasReviewedAsSpecialist && originalType != ReviewType.AS_SPECIALIST) add(ReviewType.AS_SPECIALIST)
-                }
-            }
-        }
-
-        ReviewFormDialog(
-            rating = uiState.reviewFormRating,
-            comment = uiState.reviewFormComment,
-            selectedType = if (canSelectType) uiState.reviewFormType else ReviewType.AS_OWNER,
-            canSelectType = canSelectType,
-            disabledTypes = disabledReviewTypes,
-            isEditing = uiState.editingReviewId != null,
-            onRatingChange = viewModel::updateReviewFormRating,
-            onCommentChange = viewModel::updateReviewFormComment,
-            onTypeChange = viewModel::updateReviewFormType,
-            onDismiss = viewModel::hideReviewForm,
-            onSubmit = viewModel::submitReview
-        )
     }
 }
 
@@ -475,8 +525,7 @@ private fun RatingSection(rating: UserRating?) {
 @Composable
 private fun ReviewTypeSelector(
     selectedType: ReviewType,
-    onTypeSelected: (ReviewType) -> Unit,
-    disabledTypes: Set<ReviewType> = emptySet()
+    onTypeSelected: (ReviewType) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -488,8 +537,7 @@ private fun ReviewTypeSelector(
             onClick = { onTypeSelected(ReviewType.AS_SPECIALIST) },
             modifier = Modifier.weight(1f),
             labelModifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            enabled = ReviewType.AS_SPECIALIST !in disabledTypes
+            textAlign = TextAlign.Center
         )
         OutlinedFilterChip(
             text = "Как владелец",
@@ -497,8 +545,7 @@ private fun ReviewTypeSelector(
             onClick = { onTypeSelected(ReviewType.AS_OWNER) },
             modifier = Modifier.weight(1f),
             labelModifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            enabled = ReviewType.AS_OWNER !in disabledTypes
+            textAlign = TextAlign.Center
         )
     }
 }
@@ -509,6 +556,7 @@ private fun ReviewItem(
     canEdit: Boolean,
     canDelete: Boolean,
     isCurrentUser: Boolean,
+    isDeleting: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -568,6 +616,7 @@ private fun ReviewItem(
                     if (canEdit) {
                         TextButton(
                             onClick = onEdit,
+                            enabled = !isDeleting,  // Prevent editing while deleting
                             contentPadding = PaddingValues(0.dp)
                         ) {
                             Icon(
@@ -582,15 +631,24 @@ private fun ReviewItem(
                     if (canDelete) {
                         TextButton(
                             onClick = onDelete,
+                            enabled = !isDeleting,
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Удалить",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Удалить")
+                            if (isDeleting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Удалить",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Удалить")
+                            }
                         }
                     }
                 }
@@ -600,74 +658,124 @@ private fun ReviewItem(
 }
 
 @Composable
-private fun ReviewFormDialog(
+private fun AddReviewPlaceholder(onClick: () -> Unit) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Вы ещё не оставили отзыв этого типа",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(onClick = onClick) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Написать отзыв")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewFormCard(
     rating: Int,
     comment: String,
     selectedType: ReviewType,
-    canSelectType: Boolean,
-    disabledTypes: Set<ReviewType>,
     isEditing: Boolean,
+    isSubmitting: Boolean,
     onRatingChange: (Int) -> Unit,
     onCommentChange: (String) -> Unit,
-    onTypeChange: (ReviewType) -> Unit,
-    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
     onSubmit: () -> Unit
 ) {
-    val effectiveSelectedType = if (canSelectType) selectedType else ReviewType.AS_OWNER
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = if (isEditing) "Изменить отзыв" else "Новый отзыв",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Изменить отзыв" else "Новый отзыв") },
-        text = {
-            Column {
-                Text("Оценка")
-                Row {
-                    repeat(5) { index ->
-                        IconButton(onClick = { onRatingChange(index + 1) }) {
-                            Icon(
-                                imageVector = if (index < rating) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = null,
-                                tint = if (index < rating) ReviewStarColor else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+            Text(
+                text = if (selectedType == ReviewType.AS_SPECIALIST) "Тип: Как специалист" else "Тип: Как владелец",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Оценка", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.width(8.dp))
+                repeat(5) { index ->
+                    IconButton(onClick = { onRatingChange(index + 1) }) {
+                        Icon(
+                            imageVector = if (index < rating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = if (index < rating) ReviewStarColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                if (canSelectType) {
-                    ReviewTypeSelector(
-                        selectedType = effectiveSelectedType,
-                        onTypeSelected = onTypeChange,
-                        disabledTypes = disabledTypes
-                    )
-                } else {
-                    Text(
-                        text = "Как владелец питомца",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = comment,
-                    onValueChange = onCommentChange,
-                    label = { Text("Комментарий") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onSubmit,
-                enabled = rating > 0 && comment.isNotBlank()
+
+            OutlinedTextField(
+                value = comment,
+                onValueChange = onCommentChange,
+                label = { Text("Комментарий") },
+                placeholder = { Text("Введите ваш отзыв") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (isEditing) "Сохранить" else "Отправить")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                TextButton(onClick = onCancel) {
+                    Text("Отмена")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onSubmit,
+                    enabled = rating > 0 && comment.isNotBlank() && !isSubmitting
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(if (isEditing) "Сохранить" else "Отправить")
+                    }
+                }
             }
         }
-    )
+    }
 }

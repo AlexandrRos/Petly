@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.Review
@@ -38,19 +37,22 @@ class UserDetailViewModel(
     init {
         viewModelScope.launch {
             observeCurrentUserUseCase()
-                .catch { }
+                .catch {
+                    _uiState.update { it.copy(isCurrentUserLoading = false) }
+                }
                 .collect { currentUser ->
                     _uiState.update {
                         it.copy(
                             currentUserId = currentUser?.uid ?: "",
-                            currentUserName = currentUser?.name ?: ""
+                            currentUserName = currentUser?.name ?: "",
+                            isCurrentUserLoading = false
                         )
                     }
                 }
         }
 
         viewModelScope.launch {
-            _uiState.value = UserDetailUiState(isLoading = true)
+            _uiState.update { it.copy(isLoading = true) }
 
             getUserByIdUseCase(userId)
                 .catch { e ->
@@ -97,71 +99,82 @@ class UserDetailViewModel(
         }
 
         viewModelScope.launch {
-            // Potential race: reviews may arrive before current user, flags may be stale
-            combine(
-                observeCurrentUserUseCase(),
-                getUserReviewsUseCase(userId)
-            ) { currentUser, reviews ->
-                val currentUserId = currentUser?.uid ?: ""
-                Triple(currentUserId, reviews, currentUser?.name ?: "")
-            }.catch { }
-                .collect { (currentUserId, reviews, currentUserName) ->
-                    _uiState.update { state ->
-                        state.copy(
-                            currentUserId = currentUserId,
-                            currentUserName = currentUserName,
-                            reviews = reviews,
-                            hasReviewedAsOwner = reviews.any { it.reviewerId == currentUserId && it.type == ReviewType.AS_OWNER },
-                            hasReviewedAsSpecialist = reviews.any { it.reviewerId == currentUserId && it.type == ReviewType.AS_SPECIALIST }
-                        )
-                    }
+            getUserReviewsUseCase(userId)
+                .catch { }
+                .collect { reviews ->
+                    _uiState.update { it.copy(reviews = reviews) }
                 }
         }
     }
 
     fun setReviewType(type: ReviewType) {
-        _uiState.update { it.copy(selectedReviewType = type) }
+        _uiState.update {
+            it.copy(
+                selectedReviewType = type,
+                isReviewFormVisible = false,
+                editingReviewId = null
+            )
+        }
     }
 
     fun deleteReview(reviewId: String) {
         viewModelScope.launch {
-            deleteReviewUseCase(reviewId)
+            // Mark as deleting
+            _uiState.update { state ->
+                state.copy(deletingReviewIds = state.deletingReviewIds + reviewId)
+            }
+
+            val result = deleteReviewUseCase(reviewId)
+
+            // Remove from deleting set regardless of result
+            _uiState.update { state ->
+                state.copy(deletingReviewIds = state.deletingReviewIds - reviewId)
+            }
+
+            if (result.isFailure) {
+                Log.d("UserDetailViewModel", "Failed to delete review: ${result.exceptionOrNull()?.message}")
+            }
         }
     }
 
     fun showAddReviewForm() {
         val state = _uiState.value
-        val isSpecialist = state.user?.specialist.isSpecialistValue()
-        val selectedType = if (isSpecialist) state.selectedReviewType else ReviewType.AS_OWNER
+        if (userId == state.currentUserId) {
+            Log.d("UserDetailViewModel", "Cannot review yourself")
+            return
+        }
         _uiState.update {
             it.copy(
                 isReviewFormVisible = true,
                 editingReviewId = null,
-                editingReviewOriginalType = null,
                 reviewFormRating = 0,
-                reviewFormComment = "",
-                reviewFormType = selectedType
+                reviewFormComment = ""
             )
         }
     }
 
     fun showEditReviewForm(review: Review) {
         val state = _uiState.value
-        val isSpecialist = state.user?.specialist.isSpecialistValue()
+        if (userId == state.currentUserId) {
+            return
+        }
         _uiState.update {
             it.copy(
                 isReviewFormVisible = true,
                 editingReviewId = review.id,
-                editingReviewOriginalType = review.type,
                 reviewFormRating = review.rating,
-                reviewFormComment = review.comment,
-                reviewFormType = if (isSpecialist) review.type else ReviewType.AS_OWNER
+                reviewFormComment = review.comment
             )
         }
     }
 
     fun hideReviewForm() {
-        _uiState.update { it.copy(isReviewFormVisible = false, editingReviewId = null, editingReviewOriginalType = null) }
+        _uiState.update {
+            it.copy(
+                isReviewFormVisible = false,
+                editingReviewId = null
+            )
+        }
     }
 
     fun updateReviewFormRating(rating: Int) {
@@ -172,12 +185,13 @@ class UserDetailViewModel(
         _uiState.update { it.copy(reviewFormComment = comment) }
     }
 
-    fun updateReviewFormType(type: ReviewType) {
-        _uiState.update { it.copy(reviewFormType = type) }
-    }
-
     fun submitReview() {
         val state = _uiState.value
+        if (userId == state.currentUserId) {
+            Log.d("UserDetailViewModel", "Cannot submit self-review")
+            return
+        }
+
         val rating = state.reviewFormRating
         val comment = state.reviewFormComment.trim()
 
@@ -185,35 +199,29 @@ class UserDetailViewModel(
 
         val isReviewedUserSpecialist = state.user?.specialist.isSpecialistValue()
 
-        // Force type to AS_OWNER if the reviewed user is not a specialist
-        val safeReviewType = if (!isReviewedUserSpecialist && state.reviewFormType == ReviewType.AS_SPECIALIST) {
+        val safeReviewType = if (!isReviewedUserSpecialist && state.selectedReviewType == ReviewType.AS_SPECIALIST) {
             ReviewType.AS_OWNER
         } else {
-            state.reviewFormType
+            state.selectedReviewType
         }
 
-        // Duplicate prevention (client side)
+        val hasReviewedAsOwner = state.reviews.any {
+            it.reviewerId == state.currentUserId && it.type == ReviewType.AS_OWNER
+        }
+        val hasReviewedAsSpecialist = state.reviews.any {
+            it.reviewerId == state.currentUserId && it.type == ReviewType.AS_SPECIALIST
+        }
+
         if (state.editingReviewId == null) {
-            // Adding new review
-            if ((safeReviewType == ReviewType.AS_OWNER && state.hasReviewedAsOwner) ||
-                (safeReviewType == ReviewType.AS_SPECIALIST && state.hasReviewedAsSpecialist)
+            if ((safeReviewType == ReviewType.AS_OWNER && hasReviewedAsOwner) ||
+                (safeReviewType == ReviewType.AS_SPECIALIST && hasReviewedAsSpecialist)
             ) {
                 Log.d("UserDetailViewModel", "Attempted to add duplicate review of type $safeReviewType")
                 return
             }
-        } else {
-            // Editing existing review
-            val originalType = state.editingReviewOriginalType
-            if (originalType != null && safeReviewType != originalType) {
-                // Type changed, check if new type already has a review
-                if ((safeReviewType == ReviewType.AS_OWNER && state.hasReviewedAsOwner) ||
-                    (safeReviewType == ReviewType.AS_SPECIALIST && state.hasReviewedAsSpecialist)
-                ) {
-                    Log.d("UserDetailViewModel", "Attempted to change review type to duplicate type $safeReviewType")
-                    return
-                }
-            }
         }
+
+        _uiState.update { it.copy(isSubmittingReview = true) }
 
         viewModelScope.launch {
             val review = Review(
@@ -233,9 +241,16 @@ class UserDetailViewModel(
             }
 
             if (result.isSuccess) {
-                _uiState.update { it.copy(isReviewFormVisible = false, editingReviewId = null, editingReviewOriginalType = null) }
+                _uiState.update {
+                    it.copy(
+                        isSubmittingReview = false,
+                        isReviewFormVisible = false,
+                        editingReviewId = null
+                    )
+                }
             } else {
                 Log.d("UserDetailViewModel", "Unable to save review: ${result.exceptionOrNull()?.message}")
+                _uiState.update { it.copy(isSubmittingReview = false) }
             }
         }
     }
