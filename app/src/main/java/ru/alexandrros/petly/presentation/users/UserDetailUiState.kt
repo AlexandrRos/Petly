@@ -14,12 +14,11 @@ data class UserDetailUiState(
     val selectedReviewType: ReviewType = ReviewType.AS_SPECIALIST,
     val currentUserId: String = "",
     val currentUserName: String = "",
+    val isCurrentUserLoading: Boolean = true,
     val isReviewFormVisible: Boolean = false,
     val editingReviewId: String? = null,
-    val editingReviewOriginalType: ReviewType? = null,
+    val isSubmittingReview: Boolean = false,
+    val deletingReviewIds: Set<String> = emptySet(),
     val reviewFormRating: Int = 0,
-    val reviewFormComment: String = "",
-    val reviewFormType: ReviewType = ReviewType.AS_SPECIALIST,
-    val hasReviewedAsOwner: Boolean = false,
-    val hasReviewedAsSpecialist: Boolean = false
+    val reviewFormComment: String = ""
 )
