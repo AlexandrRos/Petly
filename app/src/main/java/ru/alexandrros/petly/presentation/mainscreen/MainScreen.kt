@@ -23,7 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
@@ -41,11 +41,11 @@ import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileScreen
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
-import ru.alexandrros.petly.presentation.users.UserDetailScreen
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
 import ru.alexandrros.petly.presentation.userpets.AddEditPetScreen
 import ru.alexandrros.petly.presentation.userpets.PetDetailScreen
 import ru.alexandrros.petly.presentation.userpets.PetsScreen
+import ru.alexandrros.petly.presentation.users.UserDetailScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +91,7 @@ fun MainScreen(
     // Tracks the selected bottom tab separately from the current route
     // The same screens can be opened from different tabs,
     // so currentRoute alone can't determine which tab is active
-    var activeTabRoute by remember { mutableStateOf(Screen.Pets.route) }
+    var activeTabRoute by rememberSaveable { mutableStateOf(Screen.Pets.route) }
 
     // Update activeTabRoute when user lands on root screen without clicking tab
     LaunchedEffect(currentRoute) {
