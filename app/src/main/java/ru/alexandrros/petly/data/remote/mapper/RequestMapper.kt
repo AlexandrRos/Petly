@@ -3,8 +3,6 @@ package ru.alexandrros.petly.data.remote.mapper
 import ru.alexandrros.petly.data.remote.model.RequestDto
 import ru.alexandrros.petly.domain.model.Request
 
-
-
 fun RequestDto.toDomain(): Request = Request(
     id = documentId,
     creatorUserId = creatorUserId,
@@ -12,6 +10,11 @@ fun RequestDto.toDomain(): Request = Request(
     petName = petName,
     species = species,
     specialistUserId = specialistUserId,
+    city = city,
+    cost = cost,
+    startDate = startDate,
+    endDate = endDate,
+    status = status,
     createdAt = createdAt
 )
 
@@ -22,5 +25,10 @@ fun Request.toDto(): RequestDto = RequestDto(
     petName = petName,
     species = species,
     specialistUserId = specialistUserId,
+    city = city,
+    cost = cost,
+    startDate = startDate,
+    endDate = endDate,
+    status = status,
     createdAt = createdAt
 )

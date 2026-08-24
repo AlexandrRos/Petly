@@ -88,8 +88,10 @@ fun RequestsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (!uiState.isSpecialist || uiState.showMyRequests) "У вас пока нет заявок"
-                    else "Нет заявок от других пользователей",
+                    text = when {
+                        !uiState.isSpecialist || uiState.showMyRequests -> "У вас пока нет заявок"
+                        else -> "Нет заявок от других пользователей"
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -177,20 +179,21 @@ private fun RequestCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(16.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (request.specialistUserId != null) {
-                        Text(
-                            text = "Принята специалистом",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                Text(
+                    text = when (request.status) {
+                        Request.STATUS_PENDING -> "Ожидает специалиста"
+                        Request.STATUS_ACCEPTED -> "Принята специалистом"
+                        Request.STATUS_CONFIRMED -> "Подтверждена"
+                        else -> request.status
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (request.status) {
+                        Request.STATUS_PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
+                        Request.STATUS_ACCEPTED -> MaterialTheme.colorScheme.secondary
+                        Request.STATUS_CONFIRMED -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
-                }
+                )
             }
 
             Icon(

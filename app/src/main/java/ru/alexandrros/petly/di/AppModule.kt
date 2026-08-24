@@ -18,11 +18,13 @@ import ru.alexandrros.petly.domain.repository.UserRepository
 import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
 import ru.alexandrros.petly.domain.usecase.AddPetUseCase
 import ru.alexandrros.petly.domain.usecase.CheckExistingRequestUseCase
+import ru.alexandrros.petly.domain.usecase.ConfirmRequestUseCase
 import ru.alexandrros.petly.domain.usecase.CreateRequestUseCase
 import ru.alexandrros.petly.domain.usecase.CreateReviewUseCase
 import ru.alexandrros.petly.domain.usecase.DeletePetUseCase
 import ru.alexandrros.petly.domain.usecase.DeleteRequestUseCase
 import ru.alexandrros.petly.domain.usecase.DeleteReviewUseCase
+import ru.alexandrros.petly.domain.usecase.DismissRequestUseCase
 import ru.alexandrros.petly.domain.usecase.GetAllRequestsUseCase
 import ru.alexandrros.petly.domain.usecase.GetAllSpecialistsUseCase
 import ru.alexandrros.petly.domain.usecase.GetPetByIdUseCase
@@ -50,6 +52,7 @@ import ru.alexandrros.petly.presentation.login.LoginViewModel
 import ru.alexandrros.petly.presentation.profile.EditProfileViewModel
 import ru.alexandrros.petly.presentation.profile.ProfileViewModel
 import ru.alexandrros.petly.presentation.registration.RegisterViewModel
+import ru.alexandrros.petly.presentation.requests.RequestCreationViewModel
 import ru.alexandrros.petly.presentation.requests.RequestDetailViewModel
 import ru.alexandrros.petly.presentation.requests.RequestsViewModel
 import ru.alexandrros.petly.presentation.specialists.SpecialistListViewModel
@@ -105,6 +108,8 @@ val appModule = module {
 
     factory { GetRequestByIdUseCase(get()) }
     factory { AcceptRequestUseCase(get()) }
+    factory { ConfirmRequestUseCase(get()) }
+    factory { DismissRequestUseCase(get()) }
     factory { DeleteRequestUseCase(get()) }
     factory { GetRequestsByCreatorUseCase(get()) }
     factory { GetAllRequestsUseCase(get()) }
@@ -145,7 +150,9 @@ val appModule = module {
             deleteRequestUseCase = get(),
             getPetByUserUseCase = get(),
             getUserByIdUseCase = get(),
-            observeCurrentUserUseCase = get()
+            observeCurrentUserUseCase = get(),
+            confirmRequestUseCase = get(),
+            dismissRequestUseCase = get()
         )
     }
 
@@ -154,6 +161,16 @@ val appModule = module {
             petId = petId,
             observeCurrentUserUseCase = get(),
             observePetByUserUseCase = get(),
+            checkExistingRequestUseCase = get()
+        )
+    }
+
+    viewModel { (petId: String, petName: String, species: String) ->
+        RequestCreationViewModel(
+            petId = petId,
+            petName = petName,
+            species = species,
+            observeCurrentUserUseCase = get(),
             checkExistingRequestUseCase = get(),
             createRequestUseCase = get()
         )

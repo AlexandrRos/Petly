@@ -39,6 +39,7 @@ import ru.alexandrros.petly.presentation.common.navigation.Screen
 import ru.alexandrros.petly.presentation.mainscreen.model.TabInfo
 import ru.alexandrros.petly.presentation.profile.EditProfileScreen
 import ru.alexandrros.petly.presentation.profile.ProfileScreen
+import ru.alexandrros.petly.presentation.requests.RequestCreationScreen
 import ru.alexandrros.petly.presentation.requests.RequestDetailScreen
 import ru.alexandrros.petly.presentation.requests.RequestsScreen
 import ru.alexandrros.petly.presentation.specialists.SpecialistsScreen
@@ -243,6 +244,11 @@ fun MainScreen(
                         onBackClick = safePopBackStack,
                         onEditClick = { petToEdit ->
                             nestedNavController.navigate(Screen.EditPet.createRoute(petToEdit.id))
+                        },
+                        onRequestHelpClick = { pet ->
+                            nestedNavController.navigate(
+                                Screen.RequestCreation.createRoute(pet.id, pet.name, pet.species)
+                            )
                         }
                     )
                 }
@@ -278,6 +284,26 @@ fun MainScreen(
                                 Screen.UserDetail.createRoute(userId)
                             )
                         }
+                    )
+                }
+
+                composable(
+                    route = Screen.RequestCreation.route,
+                    arguments = listOf(
+                        navArgument("petId") { type = NavType.StringType },
+                        navArgument("petName") { type = NavType.StringType },
+                        navArgument("species") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val petId = backStackEntry.arguments?.getString("petId") ?: ""
+                    val petName = backStackEntry.arguments?.getString("petName") ?: ""
+                    val species = backStackEntry.arguments?.getString("species") ?: ""
+                    RequestCreationScreen(
+                        petId = petId,
+                        petName = petName,
+                        species = species,
+                        onBackClick = safePopBackStack,
+                        onRequestCreated = safePopBackStack // navigate back
                     )
                 }
             }

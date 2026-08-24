@@ -27,3 +27,12 @@ fun Int.toYearsWord(): String {
         else -> "лет"
     }
 }
+
+fun formatDate(millis: Long): String {
+    return try {
+        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        sdf.format(Date(millis))
+    } catch (e: Exception) {
+        millis.toString()
+    }
+}

@@ -17,9 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.model.Pet
-import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.usecase.CheckExistingRequestUseCase
-import ru.alexandrros.petly.domain.usecase.CreateRequestUseCase
 import ru.alexandrros.petly.domain.usecase.ObserveCurrentUserUseCase
 import ru.alexandrros.petly.domain.usecase.ObservePetByUserUseCase
 
@@ -27,14 +25,16 @@ class PetDetailViewModel(
     private val petId: String,
     private val observeCurrentUserUseCase: ObserveCurrentUserUseCase,
     private val observePetByUserUseCase: ObservePetByUserUseCase,
-    private val checkExistingRequestUseCase: CheckExistingRequestUseCase,
-    private val createRequestUseCase: CreateRequestUseCase
+    private val checkExistingRequestUseCase: CheckExistingRequestUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PetDetailUiState())
     val uiState: StateFlow<PetDetailUiState> = _uiState.asStateFlow()
 
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent
+
+    private val _requestHelpEvent = MutableSharedFlow<Pet>()
+    val requestHelpEvent: SharedFlow<Pet> = _requestHelpEvent
 
     private val currentUserId: StateFlow<String?> = observeCurrentUserUseCase()
         .map { it?.uid }
@@ -59,32 +59,24 @@ class PetDetailViewModel(
         }
     }
 
-    fun createRequest(petId: String, petName: String, species: String) {
+    fun onRequestHelpClick(pet: Pet) {
         viewModelScope.launch {
             _uiState.update { it.copy(isCreating = true) }
-            val uid = currentUserId.first { it != null } ?: run {
+
+            val uid = currentUserId.first { it != null }
+            if (uid == null) {
                 _snackbarEvent.emit("Ошибка: не удалось получить пользователя")
                 _uiState.update { it.copy(isCreating = false) }
                 return@launch
             }
-            val alreadyExists = checkExistingRequestUseCase(uid, petId)
+
+            val alreadyExists = checkExistingRequestUseCase(uid, pet.id)
             if (alreadyExists) {
                 _snackbarEvent.emit("Заявка для этого питомца уже создана")
-                _uiState.update { it.copy(isCreating = false) }
-                return@launch
+            } else {
+                _requestHelpEvent.emit(pet)
             }
-            createRequestUseCase(
-                Request(
-                    creatorUserId = uid,
-                    petId = petId,
-                    petName = petName,
-                    species = species
-                )
-            ).onSuccess {
-                _snackbarEvent.emit("Заявка успешно создана")
-            }.onFailure { e ->
-                _snackbarEvent.emit("Ошибка при создании заявки: ${e.localizedMessage}")
-            }
+
             _uiState.update { it.copy(isCreating = false) }
         }
     }

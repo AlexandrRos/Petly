@@ -1,6 +1,7 @@
 package ru.alexandrros.petly.data.remote.datasource
 
 import android.util.Log
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.snapshots
 import com.google.firebase.firestore.toObject
@@ -23,9 +24,32 @@ class FirebaseRequestDataSource {
 
     suspend fun acceptRequest(requestId: String, specialistUserId: String) {
         requestsCollection.document(requestId)
-            .update("specialistUserId", specialistUserId)
+            .update(
+                mapOf(
+                    "specialistUserId" to specialistUserId,
+                    "status" to RequestDto.STATUS_ACCEPTED
+                )
+            )
             .await()
     }
+
+    suspend fun confirmRequest(requestId: String) {
+        requestsCollection.document(requestId)
+            .update("status", RequestDto.STATUS_CONFIRMED)
+            .await()
+    }
+
+    suspend fun dismissRequest(requestId: String) {
+        requestsCollection.document(requestId)
+            .update(
+                mapOf(
+                    "specialistUserId" to FieldValue.delete(),
+                    "status" to RequestDto.STATUS_PENDING
+                )
+            )
+            .await()
+    }
+
 
     suspend fun deleteRequest(requestId: String) {
         requestsCollection.document(requestId).delete().await()
