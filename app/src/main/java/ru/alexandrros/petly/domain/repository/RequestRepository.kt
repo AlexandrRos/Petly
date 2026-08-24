@@ -7,6 +7,8 @@ import ru.alexandrros.petly.domain.model.Request
 interface RequestRepository {
     suspend fun createRequest(request: Request): Result<String>
     suspend fun acceptRequest(requestId: String, specialistUserId: String): Result<Unit>
+    suspend fun confirmRequest(requestId: String): Result<Unit>
+    suspend fun dismissRequest(requestId: String): Result<Unit>
     suspend fun deleteRequest(requestId: String): Result<Unit>
     fun getRequestsByCreator(userId: String): Flow<List<Request>>
     fun getRequestsBySpecialist(userId: String): Flow<List<Request>>

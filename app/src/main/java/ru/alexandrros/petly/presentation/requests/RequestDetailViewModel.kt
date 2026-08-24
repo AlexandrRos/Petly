@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.alexandrros.petly.domain.usecase.AcceptRequestUseCase
+import ru.alexandrros.petly.domain.usecase.ConfirmRequestUseCase
 import ru.alexandrros.petly.domain.usecase.DeleteRequestUseCase
+import ru.alexandrros.petly.domain.usecase.DismissRequestUseCase
 import ru.alexandrros.petly.domain.usecase.GetPetByUserUseCase
 import ru.alexandrros.petly.domain.usecase.GetRequestByIdUseCase
 import ru.alexandrros.petly.domain.usecase.GetUserByIdUseCase
@@ -22,6 +24,8 @@ class RequestDetailViewModel(
     private val requestId: String,
     private val getRequestByIdUseCase: GetRequestByIdUseCase,
     private val acceptRequestUseCase: AcceptRequestUseCase,
+    private val confirmRequestUseCase: ConfirmRequestUseCase,
+    private val dismissRequestUseCase: DismissRequestUseCase,
     private val deleteRequestUseCase: DeleteRequestUseCase,
     private val getPetByUserUseCase: GetPetByUserUseCase,
     private val getUserByIdUseCase: GetUserByIdUseCase,
@@ -117,6 +121,34 @@ class RequestDetailViewModel(
             acceptRequestUseCase(reqId, uid)
                 .onSuccess {
                     _snackbarEvent.emit("Заявка принята")
+                    loadRequest()
+                }
+                .onFailure { e ->
+                    _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
+                }
+        }
+    }
+
+    fun confirmRequest() {
+        viewModelScope.launch {
+            val reqId = _uiState.value.request?.id ?: return@launch
+            confirmRequestUseCase(reqId)
+                .onSuccess {
+                    _snackbarEvent.emit("Заявка подтверждена")
+                    loadRequest()
+                }
+                .onFailure { e ->
+                    _snackbarEvent.emit("Ошибка: ${e.localizedMessage}")
+                }
+        }
+    }
+
+    fun dismissRequest() {
+        viewModelScope.launch {
+            val reqId = _uiState.value.request?.id ?: return@launch
+            dismissRequestUseCase(reqId)
+                .onSuccess {
+                    _snackbarEvent.emit("Специалист отклонён")
                     loadRequest()
                 }
                 .onFailure { e ->

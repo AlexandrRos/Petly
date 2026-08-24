@@ -28,12 +28,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,12 +62,14 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import ru.alexandrros.petly.domain.model.Request
 import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.presentation.common.components.DetailList
 import ru.alexandrros.petly.presentation.common.components.DetailRow
 import ru.alexandrros.petly.presentation.common.components.OutlinedAssistChip
 import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
+import ru.alexandrros.petly.presentation.common.formatDate
 import ru.alexandrros.petly.presentation.common.formatTimestamp
 import ru.alexandrros.petly.presentation.common.toYearsWord
 
@@ -464,8 +468,17 @@ fun RequestDetailScreen(
                             DetailRow("Создана", formatTimestamp(req.createdAt))
                             DetailRow(
                                 "Статус",
-                                if (req.specialistUserId != null) "Принята специалистом" else "Ожидает специалиста"
+                                when (req.status) {
+                                    Request.STATUS_PENDING -> "Ожидает специалиста"
+                                    Request.STATUS_ACCEPTED -> "Принята специалистом"
+                                    Request.STATUS_CONFIRMED -> "Подтверждена"
+                                    else -> req.status
+                                }
                             )
+                            DetailRow("Город", req.city)
+                            req.cost?.let { DetailRow("Стоимость", "$it") }
+                            DetailRow("Дата начала", formatDate(req.startDate))
+                            DetailRow("Дата окончания", formatDate(req.endDate))
 
                             HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 8.dp),
@@ -552,8 +565,17 @@ fun RequestDetailScreen(
                     DetailRow("Создана", formatTimestamp(req.createdAt))
                     DetailRow(
                         "Статус",
-                        if (req.specialistUserId != null) "Принята специалистом" else "Ожидает специалиста"
+                        when (req.status) {
+                            Request.STATUS_PENDING -> "Ожидает специалиста"
+                            Request.STATUS_ACCEPTED -> "Принята специалистом"
+                            Request.STATUS_CONFIRMED -> "Подтверждена"
+                            else -> req.status
+                        }
                     )
+                    DetailRow("Город", req.city)
+                    req.cost?.let { DetailRow("Стоимость", "$it") }
+                    DetailRow("Дата начала", formatDate(req.startDate))
+                    DetailRow("Дата окончания", formatDate(req.endDate))
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 if (req.specialistUserId != null && specialist != null) {
@@ -681,6 +703,31 @@ fun RequestDetailScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Принять заявку")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (uiState.canConfirm) {
+                Button(
+                    onClick = { viewModel.confirmRequest() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Подтвердить заявку")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (uiState.canDismiss) {
+                OutlinedButton(
+                    onClick = { viewModel.dismissRequest() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Отклонить специалиста")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }

@@ -36,12 +36,32 @@ class FirebaseRequestRepository(
         }
     }
 
+    override suspend fun confirmRequest(requestId: String): Result<Unit> {
+        return try {
+            dataSource.confirmRequest(requestId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("FirebaseRequestRepo", "Confirm request error", e)
+            Result.failure(e)
+        }
+    }
+
     override suspend fun deleteRequest(requestId: String): Result<Unit> {
         return try {
             dataSource.deleteRequest(requestId)
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("FirebaseRequestRepo", "Delete request error", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun dismissRequest(requestId: String): Result<Unit> {
+        return try {
+            dataSource.dismissRequest(requestId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("FirebaseRequestRepo", "Dismiss request error", e)
             Result.failure(e)
         }
     }

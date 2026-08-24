@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import ru.alexandrros.petly.domain.model.Pet
@@ -59,13 +59,13 @@ import ru.alexandrros.petly.presentation.common.components.SectionCard
 import ru.alexandrros.petly.presentation.common.components.rememberContentInsets
 import ru.alexandrros.petly.presentation.common.toYearsWord
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetDetailScreen(
     petId: String,
     onBackClick: () -> Unit,
     onEditClick: (Pet) -> Unit,
+    onRequestHelpClick: (Pet) -> Unit,
     viewModel: PetDetailViewModel = koinViewModel(
         parameters = { parametersOf(petId) }
     )
@@ -76,8 +76,14 @@ fun PetDetailScreen(
     val contentInsets = rememberContentInsets()
 
     LaunchedEffect(Unit) {
-        viewModel.snackbarEvent.collect { message ->
+        viewModel.snackbarEvent.collectLatest { message ->
             snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.requestHelpEvent.collectLatest { pet ->
+            onRequestHelpClick(pet)
         }
     }
 
@@ -268,28 +274,12 @@ fun PetDetailScreen(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Button(
-                            onClick = {
-                                viewModel.createRequest(
-                                    petId = currentPet.id,
-                                    petName = currentPet.name,
-                                    species = currentPet.species
-                                )
-                            },
+                            onClick = { viewModel.onRequestHelpClick(currentPet) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !uiState.isCreating,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (uiState.isCreating) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Загрузка…")
-                            } else {
-                                Text("Запросить помощь")
-                            }
+                            Text("Запросить помощь")
                         }
                     }
                 } else {
@@ -394,29 +384,14 @@ fun PetDetailScreen(
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
+
                         Button(
-                            onClick = {
-                                viewModel.createRequest(
-                                    petId = currentPet.id,
-                                    petName = currentPet.name,
-                                    species = currentPet.species
-                                )
-                            },
+                            onClick = { viewModel.onRequestHelpClick(currentPet) },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !uiState.isCreating,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            if (uiState.isCreating) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Загрузка…")
-                            } else {
-                                Text("Запросить помощь")
-                            }
+                            Text("Запросить помощь")
                         }
                     }
                 }

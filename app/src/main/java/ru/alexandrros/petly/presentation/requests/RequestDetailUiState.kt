@@ -23,6 +23,18 @@ data class RequestDetailUiState(
                 currentUserSpecialist != null &&
                 currentUserSpecialist != "None"
 
+    val canConfirm: Boolean
+        get() = currentUserId != null &&
+                request != null &&
+                request.creatorUserId == currentUserId &&
+                request.status == Request.STATUS_ACCEPTED
+
+    val canDismiss: Boolean
+        get() = currentUserId != null &&
+                request != null &&
+                request.creatorUserId == currentUserId &&
+                request.status == Request.STATUS_ACCEPTED
+
     val isOwner: Boolean
         get() = currentUserId != null &&
                 request != null &&
