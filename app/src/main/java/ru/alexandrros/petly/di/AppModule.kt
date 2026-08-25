@@ -140,7 +140,15 @@ val appModule = module {
 
     viewModel { PetsViewModel(get()) }
 
-    viewModel { RequestsViewModel(get(), get(), get(), get()) }
+    viewModel {
+        RequestsViewModel(
+            observeCurrentUser = get(),
+            getRequestsByCreator = get(),
+            getAllRequests = get(),
+            getPetByUser = get(),
+            getUserRating = get()
+        )
+    }
 
     viewModel { (requestId: String) ->
         RequestDetailViewModel(
