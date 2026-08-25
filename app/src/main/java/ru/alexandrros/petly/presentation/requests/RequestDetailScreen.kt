@@ -331,65 +331,58 @@ fun RequestDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (isLandscape) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Max),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = if (showOwner) Alignment.Start else Alignment.CenterHorizontally,
-                        verticalArrangement = if (showOwner) Arrangement.SpaceBetween else Arrangement.Top,
+                if (showOwner) {
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Max),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        if (showOwner) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Top,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(120.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer
                             ) {
-                                Surface(
-                                    modifier = Modifier.size(80.dp),
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    if (petPhotoBytes != null) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(petPhotoBytes)
-                                                .crossfade(true)
-                                                .build(),
-                                            contentDescription = "Фото питомца",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
+                                if (petPhotoBytes != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(petPhotoBytes)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Фото питомца",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Pets,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(64.dp)
                                         )
-                                    } else {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.Pets,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.size(40.dp)
-                                            )
-                                        }
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = req.petName,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = req.species,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
                             }
-
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = req.petName,
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = req.species,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
                             SectionCard(
                                 title = "Владелец",
                                 onClick = {
@@ -417,7 +410,63 @@ fun RequestDetailScreen(
                                     )
                                 }
                             }
-                        } else {
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            SectionCard(title = "Информация о заявке") {
+                                DetailRow("Создана", formatTimestamp(req.createdAt))
+                                DetailRow(
+                                    "Статус",
+                                    when (req.status) {
+                                        Request.STATUS_PENDING -> "Ожидает специалиста"
+                                        Request.STATUS_ACCEPTED -> "Принята специалистом"
+                                        Request.STATUS_CONFIRMED -> "Подтверждена"
+                                        else -> req.status
+                                    }
+                                )
+                                DetailRow("Город", req.city)
+                                req.cost?.let { DetailRow("Стоимость", "$it") }
+                                DetailRow("Дата начала", formatDate(req.startDate))
+                                DetailRow("Дата окончания", formatDate(req.endDate))
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
+                                Text(
+                                    text = "Специалист",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                SpecialistDisplay(
+                                    request = req,
+                                    specialist = specialist,
+                                    isSpecialistCurrentUser = isSpecialistCurrentUser,
+                                    onUserClick = onUserClick
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Max),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Top,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
                             Surface(
                                 modifier = Modifier.size(120.dp),
                                 shape = CircleShape,
@@ -456,72 +505,44 @@ fun RequestDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        SectionCard(title = "Информация о заявке") {
-                            DetailRow("Создана", formatTimestamp(req.createdAt))
-                            DetailRow(
-                                "Статус",
-                                when (req.status) {
-                                    Request.STATUS_PENDING -> "Ожидает специалиста"
-                                    Request.STATUS_ACCEPTED -> "Принята специалистом"
-                                    Request.STATUS_CONFIRMED -> "Подтверждена"
-                                    else -> req.status
-                                }
-                            )
-                            DetailRow("Город", req.city)
-                            req.cost?.let { DetailRow("Стоимость", "$it") }
-                            DetailRow("Дата начала", formatDate(req.startDate))
-                            DetailRow("Дата окончания", formatDate(req.endDate))
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
-                            Text(
-                                text = "Специалист",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-
-                            if (req.specialistUserId != null && specialist != null) {
-                                UserRow(
-                                    user = specialist,
-                                    onClick = if (isSpecialistCurrentUser) {
-                                        {}
-                                    } else {
-                                        { onUserClick(req.specialistUserId) }
-                                    },
-                                    avatarSize = 40.dp,
-                                    label = specialist.specialist,
-                                    showArrow = !isSpecialistCurrentUser,
-                                    extraLabel = if (isSpecialistCurrentUser) "Вы" else null
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            SectionCard(title = "Информация о заявке") {
+                                DetailRow("Создана", formatTimestamp(req.createdAt))
+                                DetailRow(
+                                    "Статус",
+                                    when (req.status) {
+                                        Request.STATUS_PENDING -> "Ожидает специалиста"
+                                        Request.STATUS_ACCEPTED -> "Принята специалистом"
+                                        Request.STATUS_CONFIRMED -> "Подтверждена"
+                                        else -> req.status
+                                    }
                                 )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Специалист ещё не назначен",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
+                                DetailRow("Город", req.city)
+                                req.cost?.let { DetailRow("Стоимость", "$it") }
+                                DetailRow("Дата начала", formatDate(req.startDate))
+                                DetailRow("Дата окончания", formatDate(req.endDate))
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    SectionCard(title = "Специалист") {
+                        SpecialistDisplay(
+                            request = req,
+                            specialist = specialist,
+                            isSpecialistCurrentUser = isSpecialistCurrentUser,
+                            onUserClick = onUserClick
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Surface(
                     modifier = Modifier.size(120.dp),
@@ -733,6 +754,51 @@ fun RequestDetailScreen(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun SpecialistDisplay(
+    request: Request,
+    specialist: User?,
+    isSpecialistCurrentUser: Boolean,
+    onUserClick: (String) -> Unit
+) {
+    if (request.specialistUserId != null && specialist != null) {
+        UserRow(
+            user = specialist,
+            onClick = if (isSpecialistCurrentUser) {
+                {}
+            } else {
+                { onUserClick(request.specialistUserId) }
+            },
+            avatarSize = 40.dp,
+            label = specialist.specialist,
+            showArrow = !isSpecialistCurrentUser,
+            extraLabel = if (isSpecialistCurrentUser) "Вы" else null
+        )
+    } else if (request.specialistUserId != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Специалист ещё не назначен",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
         }
     }
 }
