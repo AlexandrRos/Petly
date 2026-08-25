@@ -38,7 +38,7 @@ class RequestCreationViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun onCityChange(city: String) {
-        _uiState.update { it.copy(city = city) }
+        _uiState.update { it.copy(city = city, cityError = false) }
     }
 
     fun onCostChange(cost: String) {
@@ -46,11 +46,11 @@ class RequestCreationViewModel(
     }
 
     fun onStartDateChange(dateMillis: Long) {
-        _uiState.update { it.copy(startDate = dateMillis) }
+        _uiState.update { it.copy(startDate = dateMillis, startDateError = false) }
     }
 
     fun onEndDateChange(dateMillis: Long) {
-        _uiState.update { it.copy(endDate = dateMillis) }
+        _uiState.update { it.copy(endDate = dateMillis, endDateError = false) }
     }
 
     fun createRequest() {
@@ -67,7 +67,7 @@ class RequestCreationViewModel(
             val city = _uiState.value.city.trim()
             if (city.isEmpty()) {
                 _snackbarEvent.emit("Введите город")
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isLoading = false, cityError = true) }
                 return@launch
             }
 
@@ -82,12 +82,24 @@ class RequestCreationViewModel(
             val endDate = _uiState.value.endDate
             if (startDate == null || endDate == null) {
                 _snackbarEvent.emit("Выберите даты начала и окончания")
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        startDateError = startDate == null,
+                        endDateError = endDate == null
+                    )
+                }
                 return@launch
             }
             if (endDate < startDate) {
                 _snackbarEvent.emit("Дата окончания должна быть после даты начала")
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        startDateError = true,
+                        endDateError = true
+                    )
+                }
                 return@launch
             }
 
@@ -113,7 +125,6 @@ class RequestCreationViewModel(
             createRequestUseCase(request)
                 .onSuccess {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    _snackbarEvent.emit("Заявка успешно создана")
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false) }
