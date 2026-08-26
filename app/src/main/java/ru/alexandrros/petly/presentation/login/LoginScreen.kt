@@ -360,7 +360,7 @@ private fun LoginForm(
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = MaterialTheme.colorScheme.outline,
                         strokeWidth = 2.dp
                     )
                 } else {
