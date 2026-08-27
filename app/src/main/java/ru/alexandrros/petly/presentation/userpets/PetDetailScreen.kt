@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -95,7 +96,14 @@ fun PetDetailScreen(
         contentWindowInsets = contentInsets,
         topBar = {
             TopAppBar(
-                title = { Text(uiState.pet?.name ?: "", style = MaterialTheme.typography.headlineSmall) },
+                title = {
+                    Text(
+                        uiState.pet?.name ?: "",
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
