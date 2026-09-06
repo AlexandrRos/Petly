@@ -185,6 +185,44 @@ class UserDetailViewModel(
         _uiState.update { it.copy(reviewFormComment = comment) }
     }
 
+    fun showReviewFilterDialog() {
+        _uiState.update { it.copy(isReviewFilterDialogVisible = true) }
+    }
+
+    fun hideReviewFilterDialog() {
+        _uiState.update { it.copy(isReviewFilterDialogVisible = false) }
+    }
+
+    fun setReviewSortOption(option: ReviewSortOption) {
+        _uiState.update { it.copy(reviewSortOption = option) }
+    }
+
+    fun setRatingFilterMin(min: Float) {
+        _uiState.update { state ->
+            state.copy(
+                ratingFilterMin = min.coerceAtMost(state.ratingFilterMax)
+            )
+        }
+    }
+
+    fun setRatingFilterMax(max: Float) {
+        _uiState.update { state ->
+            state.copy(
+                ratingFilterMax = max.coerceAtLeast(state.ratingFilterMin)
+            )
+        }
+    }
+
+    fun resetReviewFilters() {
+        _uiState.update {
+            it.copy(
+                reviewSortOption = ReviewSortOption.LATEST,
+                ratingFilterMin = 0f,
+                ratingFilterMax = 5f
+            )
+        }
+    }
+
     fun submitReview() {
         val state = _uiState.value
         if (userId == state.currentUserId) {

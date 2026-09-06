@@ -25,12 +25,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +44,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +63,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -172,6 +179,30 @@ fun UserDetailScreen(
                         }
                     }
                 }
+
+                // All reviews of the displayed type (no rating filter)
+                val allReviewsOfType = uiState.reviews.filter { it.type == displayReviewType }
+
+                // Current user's review is always shown, regardless of filters
+                val currentUserReviewOfType = allReviewsOfType.firstOrNull {
+                    it.reviewerId == uiState.currentUserId
+                }
+
+                // Other reviews: apply rating filter + sort
+                val otherReviews = allReviewsOfType
+                    .filter { it.id != currentUserReviewOfType?.id }
+                    .filter { review ->
+                        review.rating.toFloat() >= uiState.ratingFilterMin &&
+                                review.rating.toFloat() <= uiState.ratingFilterMax
+                    }
+                    .sortedWith(
+                        when (uiState.reviewSortOption) {
+                            ReviewSortOption.LATEST -> compareByDescending { it.timestamp }
+                            ReviewSortOption.OLDEST -> compareBy { it.timestamp }
+                            ReviewSortOption.HIGHEST_RATING -> compareByDescending { it.rating }
+                            ReviewSortOption.LOWEST_RATING -> compareBy { it.rating }
+                        }
+                    )
 
                 LazyColumn(
                     state = listState,
@@ -307,32 +338,57 @@ fun UserDetailScreen(
                     }
 
                     item {
-                        SectionCard(title = "Отзывы") {
-                            if (isSpecialist) {
-                                ReviewTypeSelector(
-                                    selectedType = displayReviewType,
-                                    onTypeSelected = { type ->
-                                        viewModel.setReviewType(type)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Отзывы",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    IconButton(
+                                        onClick = { viewModel.showReviewFilterDialog() },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.FilterList,
+                                            contentDescription = "Фильтры отзывов",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
-                                )
-                            } else {
-                                Text(
-                                    text = "Как владелец питомца",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Review type selector or non‑specialist label
+                                if (isSpecialist) {
+                                    ReviewTypeSelector(
+                                        selectedType = displayReviewType,
+                                        onTypeSelected = { type -> viewModel.setReviewType(type) }
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Как владелец питомца",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
-
-                    val filteredReviews = uiState.reviews.filter { it.type == displayReviewType }
-                    val currentUserReviewOfType = filteredReviews.firstOrNull {
-                        it.reviewerId == uiState.currentUserId
-                    }
-                    val sortedReviews = filteredReviews.sortedWith(
-                        compareByDescending<Review> { it.reviewerId == uiState.currentUserId }
-                            .thenByDescending { it.timestamp }
-                    )
 
                     if (uiState.isCurrentUserLoading) {
                         item {
@@ -426,7 +482,6 @@ fun UserDetailScreen(
                         }
                     }
 
-                    val otherReviews = sortedReviews.filter { it.id != currentUserReviewOfType?.id }
                     items(otherReviews, key = { it.id }) { review ->
                         ReviewItem(
                             review = review,
@@ -441,6 +496,132 @@ fun UserDetailScreen(
                 }
             }
         }
+    }
+
+    if (uiState.isReviewFilterDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideReviewFilterDialog() },
+            title = { Text("Фильтры отзывов") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Сортировка:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(100.dp)
+                        )
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            var sortMenuExpanded by remember { mutableStateOf(false) }
+                            OutlinedButton(
+                                onClick = { sortMenuExpanded = true },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = when (uiState.reviewSortOption) {
+                                        ReviewSortOption.LATEST -> "Сначала новые"
+                                        ReviewSortOption.OLDEST -> "Сначала старые"
+                                        ReviewSortOption.HIGHEST_RATING -> "С высоким рейтингом"
+                                        ReviewSortOption.LOWEST_RATING -> "С низким рейтингом"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = sortMenuExpanded,
+                                onDismissRequest = { sortMenuExpanded = false }
+                            ) {
+                                ReviewSortOption.entries.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                when (option) {
+                                                    ReviewSortOption.LATEST -> "Сначала новые"
+                                                    ReviewSortOption.OLDEST -> "Сначала старые"
+                                                    ReviewSortOption.HIGHEST_RATING -> "С высоким рейтингом"
+                                                    ReviewSortOption.LOWEST_RATING -> "С низким рейтингом"
+                                                }
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.setReviewSortOption(option)
+                                            sortMenuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Text("Диапазон рейтинга", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Мин: ${uiState.ratingFilterMin.toInt()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(60.dp)
+                        )
+                        Slider(
+                            value = uiState.ratingFilterMin,
+                            onValueChange = { viewModel.setRatingFilterMin(it) },
+                            valueRange = 0f..5f,
+                            steps = 4,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Макс: ${uiState.ratingFilterMax.toInt()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(60.dp)
+                        )
+                        Slider(
+                            value = uiState.ratingFilterMax,
+                            onValueChange = { viewModel.setRatingFilterMax(it) },
+                            valueRange = 0f..5f,
+                            steps = 4,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.hideReviewFilterDialog() }) {
+                    Text("Применить")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { viewModel.resetReviewFilters() }) {
+                        Text("Сбросить")
+                    }
+                    TextButton(onClick = { viewModel.hideReviewFilterDialog() }) {
+                        Text("Отмена")
+                    }
+                }
+            }
+        )
     }
 }
 
