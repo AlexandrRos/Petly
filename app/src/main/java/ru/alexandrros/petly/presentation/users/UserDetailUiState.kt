@@ -5,6 +5,13 @@ import ru.alexandrros.petly.domain.model.ReviewType
 import ru.alexandrros.petly.domain.model.User
 import ru.alexandrros.petly.domain.model.UserRating
 
+enum class ReviewSortOption {
+    LATEST,
+    OLDEST,
+    HIGHEST_RATING,
+    LOWEST_RATING
+}
+
 data class UserDetailUiState(
     val isLoading: Boolean = true,
     val user: User? = null,
@@ -20,5 +27,9 @@ data class UserDetailUiState(
     val isSubmittingReview: Boolean = false,
     val deletingReviewIds: Set<String> = emptySet(),
     val reviewFormRating: Int = 0,
-    val reviewFormComment: String = ""
+    val reviewFormComment: String = "",
+    val reviewSortOption: ReviewSortOption = ReviewSortOption.LATEST,
+    val ratingFilterMin: Float = 0f,
+    val ratingFilterMax: Float = 5f,
+    val isReviewFilterDialogVisible: Boolean = false
 )
